@@ -4,7 +4,7 @@
   This namespace provides the main entry points for decoding TOON content,
   dispatching to specialized decoders for arrays, objects, and primitives."
   (:require
-    [com.vadelabs.str.interface :as str]
+    [clojure.string :as str]
     [com.vadelabs.toon.decode.arrays :as arrays]
     [com.vadelabs.toon.decode.items :as items]
     [com.vadelabs.toon.decode.objects :as objects]

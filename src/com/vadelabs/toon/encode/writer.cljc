@@ -6,7 +6,7 @@
   - Line accumulation
   - Whitespace invariants (no trailing spaces or newlines)"
   (:require
-    [com.vadelabs.str.interface :as str]))
+    [clojure.string :as str]))
 
 
 ;; ============================================================================

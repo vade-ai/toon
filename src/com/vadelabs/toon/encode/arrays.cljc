@@ -6,7 +6,7 @@
   - Tabular arrays of objects (key[N]{col1,col2}: ...)
   - Nested arrays of arrays"
   (:require
-    [com.vadelabs.str.interface :as str]
+    [clojure.string :as str]
     [com.vadelabs.toon.constants :as const]
     [com.vadelabs.toon.encode.normalize :as norm]
     [com.vadelabs.toon.encode.primitives :as prim]

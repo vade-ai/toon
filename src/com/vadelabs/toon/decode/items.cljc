@@ -1,7 +1,7 @@
 (ns com.vadelabs.toon.decode.items
   "List item type detection and decoding for TOON format."
   (:require
-    [com.vadelabs.str.interface :as str]
+    [clojure.string :as str]
     [com.vadelabs.toon.constants :as const]
     [com.vadelabs.toon.decode.arrays :as arrays]
     [com.vadelabs.toon.decode.objects :as objects]

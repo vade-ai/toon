@@ -4,7 +4,7 @@
   Handles delimiter-aware quoting to ensure values can be safely
   encoded without ambiguity. Uses JSON-style escaping with backslashes."
   (:require
-    [com.vadelabs.str.interface :as str]
+    [clojure.string :as str]
     [com.vadelabs.toon.constants :as const])
   #?(:cljs (:require [goog.string])))
 
