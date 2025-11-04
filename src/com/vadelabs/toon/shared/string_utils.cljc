@@ -4,8 +4,7 @@
   Provides low-level string operations for:
   - Finding closing quotes with escape handling
   - Finding unquoted characters
-  - Unescaping string literals"
-  (:require))
+  - Unescaping string literals")
 
 
 ;; ============================================================================
