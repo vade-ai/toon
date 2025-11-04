@@ -72,6 +72,11 @@
        {}
        (let [content (:content first-line)]
          (cond
+           ;; Empty array at root: [0]
+           (and (str/starts-with? (str/trim content) "[")
+                (re-matches #"^\[0[,\t|]?\]$" (str/trim content)))
+           []
+
            ;; Array header at root (no key before bracket)
            (and (str/includes? content "[")
                 (str/includes? content "]")

@@ -73,10 +73,12 @@
 (defn inline
   "Encodes an array of primitives as an inline comma-separated list.
 
-  Format: val1,val2,val3
+  Format (depth > 0): val1,val2,val3
+  Format (depth = 0): [N]: val1,val2,val3
 
   Parameters:
     - values: Vector of primitive values
+    - length-marker: Length marker option (only used at depth 0)
     - delimiter: Delimiter character
     - depth: Current indentation depth
     - writer: LineWriter instance
@@ -85,11 +87,17 @@
     Updated LineWriter with inline array content.
 
   Examples:
-    [1,2,3] → \"1,2,3\"
+    [1,2,3] at depth > 0 → \"1,2,3\"
+    [1,2,3] at depth = 0 → \"[3]: 1,2,3\"
     [\"a\",\"b\",\"c\"] → \"a,b,c\""
-  [values delimiter depth writer]
+  [values length-marker delimiter depth writer]
   (let [encoded-values (map #(prim/encode % delimiter) values)
-        line (str/join delimiter encoded-values)]
+        values-str (str/join delimiter encoded-values)
+        ;; For root-level arrays (depth 0), include array header
+        ;; At root level, never use length marker for consistency
+        line (if (zero? depth)
+               (str (array-header (count values) false delimiter) const/colon const/space values-str)
+               values-str)]
     (writer/push writer depth line)))
 
 
@@ -100,12 +108,13 @@
 (defn tabular-header
   "Encodes the header for a tabular array.
 
-  Format: [N]{col1,col2,...}:
+  Format (depth > 0): [N]{col1,col2,...}:
+  Format (depth = 0): [N]{col1,col2,...}:
 
   Parameters:
     - count: Number of objects in array
     - keys: Vector of column names
-    - length-marker: Length marker option
+    - length-marker: Length marker option (only used at depth > 0)
     - delimiter: Delimiter character
     - depth: Current indentation depth
     - writer: LineWriter instance
@@ -113,7 +122,9 @@
   Returns:
     Updated LineWriter."
   [cnt ks length-marker delimiter depth writer]
-  (let [header-suffix (array-header cnt length-marker delimiter)
+  ;; At root level (depth 0), never use length marker
+  (let [effective-length-marker (if (zero? depth) false length-marker)
+        header-suffix (array-header cnt effective-length-marker delimiter)
         keys-part (str const/open-brace
                        (str/join delimiter ks)
                        const/close-brace
@@ -269,7 +280,7 @@
 
   Parameters:
     - array: Vector with mixed types
-    - length-marker: Length marker option
+    - length-marker: Length marker option (not used at depth 0)
     - delimiter: Delimiter character
     - depth: Current indentation depth
     - writer: LineWriter instance
@@ -277,7 +288,9 @@
   Returns:
     Updated LineWriter."
   [arr length-marker delimiter depth writer]
-  (let [header (str (array-header (count arr) length-marker delimiter) const/colon)
+  ;; At root level (depth 0), never use length marker
+  (let [effective-length-marker (if (zero? depth) false length-marker)
+        header (str (array-header (count arr) effective-length-marker delimiter) const/colon)
         w (writer/push writer depth header)]
     (mixed-items arr length-marker delimiter (inc depth) w)))
 
@@ -323,7 +336,7 @@
 
   Parameters:
     - arrays: Vector of vectors
-    - length-marker: Length marker option
+    - length-marker: Length marker option (not used at depth 0)
     - delimiter: Delimiter character
     - depth: Current indentation depth
     - writer: LineWriter instance
@@ -331,7 +344,9 @@
   Returns:
     Updated LineWriter."
   [arrays length-marker delimiter depth writer]
-  (let [header (str (array-header (count arrays) length-marker delimiter) const/colon)
+  ;; At root level (depth 0), never use length marker
+  (let [effective-length-marker (if (zero? depth) false length-marker)
+        header (str (array-header (count arrays) effective-length-marker delimiter) const/colon)
         w (writer/push writer depth header)]
     (of-arrays-items arrays length-marker delimiter (inc depth) w)))
 
@@ -362,11 +377,12 @@
   (cond
     ;; Empty array
     (empty? arr)
-    (writer/push writer depth "[]")
+    (let [empty-str (if (zero? depth) "[0]" "[]")]
+      (writer/push writer depth empty-str))
 
     ;; Array of primitives
     (norm/array-of-primitives? arr)
-    (inline arr delimiter depth writer)
+    (inline arr length-marker delimiter depth writer)
 
     ;; Array of objects with common keys: tabular format
     (norm/array-of-objects? arr)
