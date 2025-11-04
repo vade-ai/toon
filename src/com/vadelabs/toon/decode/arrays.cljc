@@ -169,10 +169,10 @@
                ;; End of rows (key-value line follows)
                (do
                  (when (and strict (not= row-count length))
-                   (ex/info! (str "Tabular array length mismatch: expected " length " rows, got " row-count)
+                   (throw (ex-info (str "Tabular array length mismatch: expected " length " rows, got " row-count)
                                    {:type :tabular-array-length-mismatch
                                     :expected length
-                                    :actual row-count}))
+                                    :actual row-count})))
                  [objects remaining-cursor])
                ;; Parse data row
                (let [values (parse-tabular-row (:content line) delimiter strict)
@@ -229,10 +229,10 @@
              ;; No list marker: end of list
              (do
                (when (and strict (not= item-count length))
-                 (ex/info! (str "List array length mismatch: expected " length " items, got " item-count)
+                 (throw (ex-info (str "List array length mismatch: expected " length " items, got " item-count)
                                  {:type :list-array-length-mismatch
                                   :expected length
-                                  :actual item-count}))
+                                  :actual item-count})))
                [items remaining-cursor])
              ;; Decode list item using provided function
              (let [[item new-cursor] (list-item-fn line remaining-cursor depth delimiter strict)]
