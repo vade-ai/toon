@@ -20,7 +20,11 @@
   (= value "null"))
 
 (defn numeric-like? [value]
-  (boolean (re-matches #"^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$" value)))
+  (or
+    ;; Standard numeric pattern: 42, -3.14, 1e-6
+    (boolean (re-matches #"^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$" value))
+    ;; Leading zeros pattern: 05, 007
+    (boolean (re-matches #"^0\d+$" value))))
 
 (defn has-structural-chars? [value]
   (boolean (re-find #"[\[\]{}\-]" value)))
@@ -182,3 +186,56 @@
    (if (needs-quoting? value delimiter)
      (wrap value)
      value)))
+
+
+;; ============================================================================
+;; Key Quoting Logic
+;; ============================================================================
+
+(defn valid-unquoted-key?
+  "Returns true if a key can be used without quotes.
+
+  Valid unquoted keys must match the pattern: /^[A-Z_][\\w./]*$/i
+  - Start with a letter (A-Z, a-z) or underscore (_)
+  - Followed by letters, digits, underscores, dots, or forward slashes
+
+  Note: Forward slashes are allowed to support Clojure namespaced keywords.
+
+  Parameters:
+    - key: String key to check
+
+  Returns:
+    Boolean indicating if key can be unquoted.
+
+  Examples:
+    (valid-unquoted-key? \"name\")        ;=> true
+    (valid-unquoted-key? \"user_id\")     ;=> true
+    (valid-unquoted-key? \"user.name\")   ;=> true
+    (valid-unquoted-key? \"user/id\")     ;=> true (namespaced)
+    (valid-unquoted-key? \"user name\")   ;=> false (space)
+    (valid-unquoted-key? \"123\")         ;=> false (starts with digit)
+    (valid-unquoted-key? \"key:value\")   ;=> false (colon)"
+  [key]
+  (boolean (re-matches #"^[A-Za-z_][\w./]*$" key)))
+
+
+(defn maybe-quote-key
+  "Quotes a key if it cannot be used unquoted, otherwise returns it unchanged.
+
+  Keys need quoting if they don't match the valid unquoted key pattern.
+
+  Parameters:
+    - key: String key to potentially quote
+
+  Returns:
+    Original or quoted key.
+
+  Examples:
+    (maybe-quote-key \"name\")        ;=> \"name\"
+    (maybe-quote-key \"user name\")   ;=> \"\\\"user name\\\"\"
+    (maybe-quote-key \"123\")         ;=> \"\\\"123\\\"\"
+    (maybe-quote-key \"key:value\")   ;=> \"\\\"key:value\\\"\""
+  [key]
+  (if (valid-unquoted-key? key)
+    key
+    (wrap key)))

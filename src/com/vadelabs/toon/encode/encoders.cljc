@@ -10,6 +10,7 @@
             [com.vadelabs.toon.encode.primitives :as prim]
             [com.vadelabs.toon.encode.arrays :as array]
             [com.vadelabs.toon.encode.writer :as writer]
+            [com.vadelabs.toon.shared.quote :as quote]
             [clojure.string :as str]))
 
 ;; Forward declarations for mutual recursion
@@ -34,8 +35,9 @@
   Returns:
     Updated LineWriter"
   [k v options depth writer]
-  (let [encoded-value (prim/encode v (:delimiter options))
-        line (str k const/colon const/space encoded-value)]
+  (let [quoted-key (quote/maybe-quote-key k)
+        encoded-value (prim/encode v (:delimiter options))
+        line (str quoted-key const/colon const/space encoded-value)]
     (writer/push writer depth line)))
 
 
@@ -52,7 +54,8 @@
   Returns:
     Updated LineWriter"
   [k depth writer]
-  (writer/push writer depth (str k "[0]")))
+  (let [quoted-key (quote/maybe-quote-key k)]
+    (writer/push writer depth (str quoted-key "[0]"))))
 
 
 (defn- primitive-array-pair
@@ -70,7 +73,8 @@
   Returns:
     Updated LineWriter"
   [k v options depth writer]
-  (let [header (str k (array/array-header (count v) (:length-marker options) (:delimiter options)) const/colon const/space)
+  (let [quoted-key (quote/maybe-quote-key k)
+        header (str quoted-key (array/array-header (count v) (:length-marker options) (:delimiter options)) const/colon const/space)
         encoded-values (map #(prim/encode % (:delimiter options)) v)
         values-str (str/join (:delimiter options) encoded-values)
         line (str header values-str)]
@@ -94,25 +98,26 @@
   Returns:
     Updated LineWriter"
   [k v options depth writer]
-  (cond
-    ;; Uniform array of objects with common keys: tabular format
-    (and (norm/array-of-objects? v)
-         (seq (array/extract-common-keys v)))
-    (let [header (str k (array/array-header (count v) (:length-marker options) (:delimiter options)))
-          w (writer/push writer depth header)]
-      (array/encode v (:length-marker options) (:delimiter options) depth w))
+  (let [quoted-key (quote/maybe-quote-key k)]
+    (cond
+      ;; Uniform array of objects with common keys: tabular format
+      (and (norm/array-of-objects? v)
+           (seq (array/extract-common-keys v)))
+      (let [header (str quoted-key (array/array-header (count v) (:length-marker options) (:delimiter options)))
+            w (writer/push writer depth header)]
+        (array/encode v (:length-marker options) (:delimiter options) depth w))
 
-    ;; Array of arrays: list format
-    (norm/array-of-arrays? v)
-    (let [header (str k (array/array-header (count v) (:length-marker options) (:delimiter options)) const/colon)
-          w (writer/push writer depth header)]
-      (array/of-arrays-items v (:length-marker options) (:delimiter options) (inc depth) w))
+      ;; Array of arrays: list format
+      (norm/array-of-arrays? v)
+      (let [header (str quoted-key (array/array-header (count v) (:length-marker options) (:delimiter options)) const/colon)
+            w (writer/push writer depth header)]
+        (array/of-arrays-items v (:length-marker options) (:delimiter options) (inc depth) w))
 
-    ;; Mixed arrays or non-uniform objects: list format
-    :else
-    (let [header (str k (array/array-header (count v) (:length-marker options) (:delimiter options)) const/colon)
-          w (writer/push writer depth header)]
-      (array/mixed-items v (:length-marker options) (:delimiter options) (inc depth) w))))
+      ;; Mixed arrays or non-uniform objects: list format
+      :else
+      (let [header (str quoted-key (array/array-header (count v) (:length-marker options) (:delimiter options)) const/colon)
+            w (writer/push writer depth header)]
+        (array/mixed-items v (:length-marker options) (:delimiter options) (inc depth) w)))))
 
 
 (defn- object-pair
@@ -130,7 +135,8 @@
   Returns:
     Updated LineWriter"
   [k v options depth writer]
-  (let [w (writer/push writer depth (str k const/colon))]
+  (let [quoted-key (quote/maybe-quote-key k)
+        w (writer/push writer depth (str quoted-key const/colon))]
     (object v options (inc depth) w)))
 
 

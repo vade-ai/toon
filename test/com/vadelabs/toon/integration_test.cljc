@@ -210,3 +210,53 @@
     (let [data {:items [{:a 1} [1 2]]}
           result (trim/encode data)]
       (is (= "items[2]:\n  - a: 1\n  - [2]: 1,2" result)))))
+
+;; ============================================================================
+;; Key Quoting Tests
+;; ============================================================================
+
+(deftest encode-key-with-spaces-test
+  (testing "Keys with spaces are quoted"
+    (is (= "\"user name\": Alice" (trim/encode {"user name" "Alice"})))))
+
+(deftest encode-key-with-colon-test
+  (testing "Keys with colons are quoted"
+    (is (= "\"key:value\": test" (trim/encode {"key:value" "test"})))))
+
+(deftest encode-key-starting-with-digit-test
+  (testing "Keys starting with digits are quoted"
+    (is (= "\"123\": value" (trim/encode {"123" "value"})))))
+
+(deftest encode-key-with-brackets-test
+  (testing "Keys with brackets are quoted"
+    (is (= "\"[special]\": value" (trim/encode {"[special]" "value"})))))
+
+(deftest encode-valid-unquoted-keys-test
+  (testing "Valid keys remain unquoted"
+    (let [result (trim/encode {"name" "Alice" "user_id" "123" "user.name" "Bob"})]
+      (is (str/includes? result "name: Alice"))
+      (is (str/includes? result "user_id: \"123\""))
+      (is (str/includes? result "user.name: Bob")))))
+
+(deftest encode-tabular-array-with-special-keys-test
+  (testing "Tabular array with special character keys"
+    (let [data [{"user name" "Alice" "user id" 1}
+                {"user name" "Bob" "user id" 2}]
+          result (trim/encode data)]
+      (is (= "[2]{\"user name\",\"user id\"}:\n  Alice,1\n  Bob,2" result)))))
+
+(deftest encode-roundtrip-with-special-keys-test
+  (testing "Roundtrip with special character keys"
+    (let [data {"user name" "Alice" "key:value" "test" "123" "numeric"}
+          encoded (trim/encode data)
+          decoded (trim/decode encoded)]
+      (is (= data decoded)))))
+
+;; ============================================================================
+;; Leading Zero Value Tests
+;; ============================================================================
+
+(deftest encode-value-leading-zeros-test
+  (testing "Values with leading zeros are quoted"
+    (is (= "value: \"05\"" (trim/encode {"value" "05"})))
+    (is (= "value: \"007\"" (trim/encode {"value" "007"})))))

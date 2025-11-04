@@ -10,7 +10,8 @@
     [com.vadelabs.toon.constants :as const]
     [com.vadelabs.toon.encode.normalize :as norm]
     [com.vadelabs.toon.encode.primitives :as prim]
-    [com.vadelabs.toon.encode.writer :as writer]))
+    [com.vadelabs.toon.encode.writer :as writer]
+    [com.vadelabs.toon.shared.quote :as quote]))
 
 
 ;; ============================================================================
@@ -122,8 +123,9 @@
     Updated LineWriter."
   [cnt ks length-marker delimiter depth writer]
   (let [header-suffix (array-header cnt length-marker delimiter)
+        quoted-keys (map quote/maybe-quote-key ks)
         keys-part (str const/open-brace
-                       (str/join delimiter ks)
+                       (str/join delimiter quoted-keys)
                        const/close-brace
                        const/colon)]
     (writer/push writer depth (str header-suffix keys-part))))

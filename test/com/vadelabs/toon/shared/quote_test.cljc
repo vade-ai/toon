@@ -362,3 +362,47 @@
     ;; Leading zeros (looks numeric)
     (is (= "\"007\"" (quote/maybe-quote "007")))
     (is (= "0xFF" (quote/maybe-quote "0xFF")))))  ; Not matched by numeric pattern, no quoting needed
+
+;; ============================================================================
+;; Key Validation Tests
+;; ============================================================================
+
+(deftest valid-unquoted-key-test
+  (testing "Valid unquoted keys match pattern /^[A-Z_][\\w./]*$/i"
+    ;; Valid keys
+    (is (quote/valid-unquoted-key? "name"))
+    (is (quote/valid-unquoted-key? "Name"))
+    (is (quote/valid-unquoted-key? "_private"))
+    (is (quote/valid-unquoted-key? "user_id"))
+    (is (quote/valid-unquoted-key? "user123"))
+    (is (quote/valid-unquoted-key? "user.name"))
+    (is (quote/valid-unquoted-key? "user_name.first"))
+    (is (quote/valid-unquoted-key? "user/profile"))       ; namespaced (Clojure)
+    (is (quote/valid-unquoted-key? "ns.name/key"))        ; namespaced with dots
+
+    ;; Invalid keys
+    (is (not (quote/valid-unquoted-key? "123")))           ; starts with digit
+    (is (not (quote/valid-unquoted-key? "user name")))    ; contains space
+    (is (not (quote/valid-unquoted-key? "key:value")))    ; contains colon
+    (is (not (quote/valid-unquoted-key? "[special]")))    ; contains brackets
+    (is (not (quote/valid-unquoted-key? "user-name")))    ; contains hyphen
+    (is (not (quote/valid-unquoted-key? "")))             ; empty string
+    ))
+
+(deftest maybe-quote-key-test
+  (testing "Keys are quoted when they don't match valid pattern"
+    ;; Valid keys remain unquoted
+    (is (= "name" (quote/maybe-quote-key "name")))
+    (is (= "user_id" (quote/maybe-quote-key "user_id")))
+    (is (= "user.name" (quote/maybe-quote-key "user.name")))
+
+    ;; Invalid keys are quoted
+    (is (= "\"user name\"" (quote/maybe-quote-key "user name")))
+    (is (= "\"123\"" (quote/maybe-quote-key "123")))
+    (is (= "\"key:value\"" (quote/maybe-quote-key "key:value")))
+    (is (= "\"[special]\"" (quote/maybe-quote-key "[special]")))
+    (is (= "\"user-name\"" (quote/maybe-quote-key "user-name")))
+
+    ;; Keys with escape sequences are quoted and escaped
+    (is (= "\"key\\nvalue\"" (quote/maybe-quote-key "key\nvalue")))
+    (is (= "\"say \\\"hi\\\"\"" (quote/maybe-quote-key "say \"hi\"")))))
