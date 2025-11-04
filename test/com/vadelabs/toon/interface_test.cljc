@@ -1,7 +1,7 @@
 (ns com.vadelabs.toon.interface-test
   (:require #?(:clj [clojure.test :refer [deftest is testing]]
                :cljs [cljs.test :refer [deftest is testing]])
-            [com.vadelabs.spec.interface :as spec]
+            ;             [com.vadelabs.spec.interface :as spec]
             [com.vadelabs.toon.interface :as trim]
             [com.vadelabs.toon.constants :as const]))
 
