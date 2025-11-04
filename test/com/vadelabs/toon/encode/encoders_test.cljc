@@ -187,7 +187,7 @@
   (testing "encode-value handles arrays"
     (let [opts (make-options)
           w (obj/value [1 2 3] opts 0 (writer/create))]
-      (is (= "1,2,3" (writer/to-string w))))))
+      (is (= "[3]: 1,2,3" (writer/to-string w))))))
 
 (deftest encode-value-object-test
   (testing "encode-value handles objects"

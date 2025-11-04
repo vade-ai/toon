@@ -17,10 +17,10 @@
     (is (= "null" (trim/encode nil)))))
 
 (deftest encode-simple-array-test
-  (testing "Encode simple arrays"
-    (is (= "1,2,3" (trim/encode [1 2 3])))
-    (is (= "a,b,c" (trim/encode ["a" "b" "c"])))
-    (is (= "[]" (trim/encode [])))))
+  (testing "Encode simple arrays with headers at root level"
+    (is (= "[3]: 1,2,3" (trim/encode [1 2 3])))
+    (is (= "[3]: a,b,c" (trim/encode ["a" "b" "c"])))
+    (is (= "[0]" (trim/encode [])))))
 
 ;; ============================================================================
 ;; Simple Object Encoding Tests
@@ -186,8 +186,8 @@
     (is (= "" (trim/encode {})))))
 
 (deftest encode-empty-array-test
-  (testing "Encode empty array"
-    (is (= "[]" (trim/encode [])))))
+  (testing "Encode empty array with header at root level"
+    (is (= "[0]" (trim/encode [])))))
 
 (deftest encode-object-with-nil-values-test
   (testing "Encode object with nil values"

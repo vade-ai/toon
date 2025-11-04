@@ -94,9 +94,8 @@
   (let [encoded-values (map #(prim/encode % delimiter) values)
         values-str (str/join delimiter encoded-values)
         ;; For root-level arrays (depth 0), include array header
-        ;; At root level, never use length marker for consistency
         line (if (zero? depth)
-               (str (array-header (count values) false delimiter) const/colon const/space values-str)
+               (str (array-header (count values) length-marker delimiter) const/colon const/space values-str)
                values-str)]
     (writer/push writer depth line)))
 
@@ -122,9 +121,7 @@
   Returns:
     Updated LineWriter."
   [cnt ks length-marker delimiter depth writer]
-  ;; At root level (depth 0), never use length marker
-  (let [effective-length-marker (if (zero? depth) false length-marker)
-        header-suffix (array-header cnt effective-length-marker delimiter)
+  (let [header-suffix (array-header cnt length-marker delimiter)
         keys-part (str const/open-brace
                        (str/join delimiter ks)
                        const/close-brace
@@ -288,9 +285,7 @@
   Returns:
     Updated LineWriter."
   [arr length-marker delimiter depth writer]
-  ;; At root level (depth 0), never use length marker
-  (let [effective-length-marker (if (zero? depth) false length-marker)
-        header (str (array-header (count arr) effective-length-marker delimiter) const/colon)
+  (let [header (str (array-header (count arr) length-marker delimiter) const/colon)
         w (writer/push writer depth header)]
     (mixed-items arr length-marker delimiter (inc depth) w)))
 
@@ -344,9 +339,7 @@
   Returns:
     Updated LineWriter."
   [arrays length-marker delimiter depth writer]
-  ;; At root level (depth 0), never use length marker
-  (let [effective-length-marker (if (zero? depth) false length-marker)
-        header (str (array-header (count arrays) effective-length-marker delimiter) const/colon)
+  (let [header (str (array-header (count arrays) length-marker delimiter) const/colon)
         w (writer/push writer depth header)]
     (of-arrays-items arrays length-marker delimiter (inc depth) w)))
 

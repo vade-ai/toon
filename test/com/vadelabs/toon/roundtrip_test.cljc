@@ -102,24 +102,24 @@
 ;; ============================================================================
 ;; Array Roundtrip Tests
 ;; ============================================================================
-;; NOTE: Top-level arrays have parsing ambiguity in TOON format and don't
-;; roundtrip correctly. Arrays as object values work fine (tested below
-;; in nested structure tests). This is a known limitation of the format.
 
-;; Top-level array tests are disabled:
-#_(defspec array-string-roundtrip 20
-  (prop/for-all [arr (gen/vector gen-non-empty-string 2 10)]
+(defspec array-string-roundtrip 20
+  (prop/for-all [arr (gen/vector gen-non-empty-string 1 10)]
     (= arr (roundtrip arr))))
 
-#_(defspec array-number-roundtrip 20
-  (prop/for-all [arr (gen/vector gen/int 2 10)]
+(defspec array-number-roundtrip 20
+  (prop/for-all [arr (gen/vector gen/int 1 10)]
     (let [expected (mapv double arr)
           actual (roundtrip arr)]
       (= expected actual))))
 
-#_(defspec array-boolean-roundtrip 10
-  (prop/for-all [arr (gen/vector gen/boolean 2 5)]
+(defspec array-boolean-roundtrip 10
+  (prop/for-all [arr (gen/vector gen/boolean 1 5)]
     (= arr (roundtrip arr))))
+
+(deftest array-empty-roundtrip
+  (testing "Empty arrays roundtrip correctly"
+    (is (= [] (roundtrip [])))))
 
 
 ;; ============================================================================

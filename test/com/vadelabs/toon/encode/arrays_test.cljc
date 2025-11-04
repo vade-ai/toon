@@ -69,40 +69,40 @@
 ;; ============================================================================
 
 (deftest encode-inline-array-numbers-test
-  (testing "Encode array of numbers"
-    (let [w (arr/inline [1 2 3] "," 0 (writer/create))]
-      (is (= "1,2,3" (writer/to-string w)))))
+  (testing "Encode array of numbers at root (depth 0)"
+    (let [w (arr/inline [1 2 3] false "," 0 (writer/create))]
+      (is (= "[3]: 1,2,3" (writer/to-string w)))))
 
-  (testing "Encode array of floats"
-    (let [w (arr/inline [1.5 2.5 3.5] "," 0 (writer/create))]
-      (is (= "1.5,2.5,3.5" (writer/to-string w))))))
+  (testing "Encode array of floats at nested level"
+    (let [w (arr/inline [1.5 2.5 3.5] false "," 1 (writer/create))]
+      (is (= "  1.5,2.5,3.5" (writer/to-string w))))))
 
 (deftest encode-inline-array-strings-test
-  (testing "Encode array of simple strings"
-    (let [w (arr/inline ["a" "b" "c"] "," 0 (writer/create))]
-      (is (= "a,b,c" (writer/to-string w)))))
+  (testing "Encode array of simple strings at root"
+    (let [w (arr/inline ["a" "b" "c"] false "," 0 (writer/create))]
+      (is (= "[3]: a,b,c" (writer/to-string w)))))
 
-  (testing "Encode array with strings needing quotes"
-    (let [w (arr/inline ["a" "b,c" "d"] "," 0 (writer/create))]
-      (is (= "a,\"b,c\",d" (writer/to-string w))))))
+  (testing "Encode array with strings needing quotes at nested level"
+    (let [w (arr/inline ["a" "b,c" "d"] false "," 1 (writer/create))]
+      (is (= "  a,\"b,c\",d" (writer/to-string w))))))
 
 (deftest encode-inline-array-mixed-primitives-test
-  (testing "Encode array of mixed primitive types"
-    (let [w (arr/inline [1 "two" true nil] "," 0 (writer/create))]
-      (is (= "1,two,true,null" (writer/to-string w))))))
+  (testing "Encode array of mixed primitive types at root"
+    (let [w (arr/inline [1 "two" true nil] false "," 0 (writer/create))]
+      (is (= "[4]: 1,two,true,null" (writer/to-string w))))))
 
 (deftest encode-inline-array-with-tab-delimiter-test
-  (testing "Encode array with tab delimiter"
-    (let [w (arr/inline ["a" "b" "c"] "\t" 0 (writer/create))]
-      (is (= "a\tb\tc" (writer/to-string w)))))
+  (testing "Encode array with tab delimiter at root"
+    (let [w (arr/inline ["a" "b" "c"] false "\t" 0 (writer/create))]
+      (is (= "[3\t]: a\tb\tc" (writer/to-string w)))))
 
-  (testing "Tab delimiter doesn't quote commas"
-    (let [w (arr/inline ["a,b" "c,d"] "\t" 0 (writer/create))]
-      (is (= "a,b\tc,d" (writer/to-string w))))))
+  (testing "Tab delimiter doesn't quote commas at nested level"
+    (let [w (arr/inline ["a,b" "c,d"] false "\t" 1 (writer/create))]
+      (is (= "  a,b\tc,d" (writer/to-string w))))))
 
 (deftest encode-inline-array-indented-test
-  (testing "Encode array with indentation"
-    (let [w (arr/inline [1 2 3] "," 1 (writer/create))]
+  (testing "Encode array with indentation (at nested level, no header)"
+    (let [w (arr/inline [1 2 3] false "," 1 (writer/create))]
       (is (= "  1,2,3" (writer/to-string w))))))
 
 ;; ============================================================================
@@ -210,14 +210,14 @@
 ;; ============================================================================
 
 (deftest encode-array-empty-test
-  (testing "Encode empty array"
+  (testing "Encode empty array at root"
     (let [w (arr/encode [] false "," 0 (writer/create))]
-      (is (= "[]" (writer/to-string w))))))
+      (is (= "[0]" (writer/to-string w))))))
 
 (deftest encode-array-primitives-test
-  (testing "Encode array of primitives dispatches to inline"
+  (testing "Encode array of primitives at root includes header"
     (let [w (arr/encode [1 2 3] false "," 0 (writer/create))]
-      (is (= "1,2,3" (writer/to-string w))))))
+      (is (= "[3]: 1,2,3" (writer/to-string w))))))
 
 (deftest encode-array-objects-test
   (testing "Encode array of objects dispatches to tabular"
