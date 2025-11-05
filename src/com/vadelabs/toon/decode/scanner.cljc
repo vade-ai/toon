@@ -59,18 +59,21 @@
     nil on success, throws on error"
   [line line-number indent indent-size]
   (when (str/includes? line "\t")
-    (throw (ex-info (str "Tabs not allowed in strict mode (line " line-number ")")
+    (throw (ex-info (str "Tabs not allowed for indentation in strict mode (line " line-number ")")
                     {:type :invalid-indentation
                      :line-number line-number
-                     :message "Tabs are not allowed in indentation"})))
+                     :line line
+                     :suggestion "Replace tabs with spaces for indentation"
+                     :note "Use :strict false option to allow tabs"})))
 
   (when-not (zero? (mod indent indent-size))
-    (throw (ex-info (str "Indentation must be multiple of " indent-size " (line " line-number ")")
+    (throw (ex-info (str "Indentation must be multiple of " indent-size " spaces (line " line-number ")")
                     {:type :invalid-indentation
                      :line-number line-number
                      :indent indent
                      :indent-size indent-size
-                     :message (str "Indentation must be multiple of " indent-size)}))))
+                     :suggestion (str "Use " (* indent-size (quot (+ indent indent-size -1) indent-size)) " spaces instead of " indent)
+                     :valid-indents (vec (map #(* % indent-size) (range 0 5)))}))))
 
 
 (defn to-parsed-lines

@@ -124,7 +124,9 @@
       (throw (ex-info "Object in list must have key:value format"
                       {:type :invalid-object-list-item
                        :line (:line-number line)
-                       :content content})))
+                       :content content
+                       :suggestion "Add a colon between key and value: - key: value"
+                       :examples ["- name: Alice" "- id: 123" "- active: true"]})))
     (let [key-part (subs after-marker 0 colon-pos)
             value-part (str/trim (subs after-marker (inc colon-pos)))
             first-key (parser/key-token key-part)

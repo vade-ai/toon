@@ -56,6 +56,8 @@
 
      ;; Should not reach here if normalized properly
      :else
-     (throw (ex-info "Cannot encode non-primitive value"
+     (throw (ex-info "Cannot encode non-primitive value: expected nil, boolean, number, or string"
                      {:value value
-                      :type (type value)})))))
+                      :type (type value)
+                      :suggestion "Ensure value is normalized before encoding"
+                      :valid-types ["nil" "boolean" "number" "string"]})))))

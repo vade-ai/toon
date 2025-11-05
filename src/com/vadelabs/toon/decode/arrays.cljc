@@ -41,10 +41,12 @@
        (let [tokens (parser/delimited-values inline-values delimiter)
              values (mapv #(parser/primitive-token % strict) tokens)]
          (when (and strict (not= (count values) length))
-           (throw (ex-info (str "Array length mismatch: expected " length ", got " (count values))
+           (throw (ex-info (str "Array length mismatch: header specifies " length " items but found " (count values))
                            {:type :array-length-mismatch
                             :expected length
-                            :actual (count values)})))
+                            :actual (count values)
+                            :values values
+                            :suggestion (str "Update header to [" (count values) "] or adjust values to match [" length "]")})))
          values)))))
 
 
@@ -157,10 +159,11 @@
            ;; No more lines at depth
            (do
              (when (and strict (not= row-count length))
-               (throw (ex-info (str "Tabular array length mismatch: expected " length " rows, got " row-count)
+               (throw (ex-info (str "Tabular array length mismatch: header specifies " length " rows but found " row-count)
                                {:type :tabular-array-length-mismatch
                                 :expected length
-                                :actual row-count})))
+                                :actual row-count
+                                :suggestion (str "Update header to [" row-count "]{...} or add " (- length row-count) " more row(s)")})))
              [objects remaining-cursor])
            ;; Check if this is a data row or key-value line with look-ahead
            (let [next-cursor (scanner/advance-cursor remaining-cursor)
@@ -169,10 +172,11 @@
                ;; End of rows (key-value line follows)
                (do
                  (when (and strict (not= row-count length))
-                   (throw (ex-info (str "Tabular array length mismatch: expected " length " rows, got " row-count)
+                   (throw (ex-info (str "Tabular array length mismatch: header specifies " length " rows but found " row-count)
                                    {:type :tabular-array-length-mismatch
                                     :expected length
-                                    :actual row-count})))
+                                    :actual row-count
+                                    :suggestion (str "Update header to [" row-count "]{...} or add " (- length row-count) " more row(s)")})))
                  [objects remaining-cursor])
                ;; Parse data row
                (let [values (parse-tabular-row (:content line) delimiter strict)
@@ -219,20 +223,22 @@
            ;; No more lines at depth
            (do
              (when (and strict (not= item-count length))
-               (throw (ex-info (str "List array length mismatch: expected " length " items, got " item-count)
+               (throw (ex-info (str "List array length mismatch: header specifies " length " items but found " item-count)
                                {:type :list-array-length-mismatch
                                 :expected length
-                                :actual item-count})))
+                                :actual item-count
+                                :suggestion (str "Update header to [" item-count "] or add " (- length item-count) " more item(s)")})))
              [items remaining-cursor])
            ;; Check if line starts with list marker
            (if-not (str/starts-with? (:content line) const/list-item-prefix)
              ;; No list marker: end of list
              (do
                (when (and strict (not= item-count length))
-                 (throw (ex-info (str "List array length mismatch: expected " length " items, got " item-count)
+                 (throw (ex-info (str "List array length mismatch: header specifies " length " items but found " item-count)
                                  {:type :list-array-length-mismatch
                                   :expected length
-                                  :actual item-count})))
+                                  :actual item-count
+                                  :suggestion (str "Update header to [" item-count "] or add " (- length item-count) " more item(s)")})))
                [items remaining-cursor])
              ;; Decode list item using provided function
              (let [[item new-cursor] (list-item-fn line remaining-cursor depth delimiter strict)]

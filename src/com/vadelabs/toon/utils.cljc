@@ -155,9 +155,11 @@
              (if (>= (inc pos) (count s))
                ;; Trailing backslash
                (if strict
-                 (throw (ex-info "Invalid escape sequence: trailing backslash"
+                 (throw (ex-info "Invalid escape sequence: string ends with unescaped backslash"
                                  {:type :invalid-escape
-                                  :position pos}))
+                                  :position pos
+                                  :suggestion "Escape the backslash with \\\\ or remove the trailing backslash"
+                                  :context (subs s (max 0 (- pos 10)) (count s))}))
                  (do
                    (append! builder ch)
                    (recur (inc pos))))
@@ -174,7 +176,10 @@
                      (throw (ex-info (str "Invalid escape sequence: \\" next-ch)
                                      {:type :invalid-escape
                                       :sequence (str "\\" next-ch)
-                                      :position pos}))
+                                      :position pos
+                                      :suggestion (str "Use one of: \\\\, \\\", \\n, \\r, \\t (found: \\" next-ch ")")
+                                      :valid-escapes ["\\\\", "\\\"", "\\n", "\\r", "\\t"]
+                                      :context (subs s (max 0 (- pos 5)) (min (count s) (+ pos 10)))}))
                      (do
                        (append! builder ch)
                        (append! builder next-ch)

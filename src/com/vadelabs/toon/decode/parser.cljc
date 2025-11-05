@@ -41,13 +41,17 @@
    (when-not (str/starts-with? s "\"")
      (throw (ex-info "String literal must start with double quote"
                      {:type :invalid-string-literal
-                      :input s})))
+                      :input s
+                      :suggestion "Wrap the string in double quotes: \"your string here\""
+                      :example "\"hello world\""})))
    (let [content-start 1
          close-pos (str-utils/closing-quote s content-start)]
      (when-not close-pos
-       (throw (ex-info "Unterminated string literal"
+       (throw (ex-info "Unterminated string literal: missing closing double quote"
                        {:type :unterminated-string
-                        :input s})))
+                        :input s
+                        :suggestion "Add a closing double quote at the end of the string"
+                        :example "\"hello world\""})))
      (let [content (subs s content-start close-pos)]
        (str-utils/unescaped content strict)))))
 ;; ============================================================================
@@ -209,9 +213,11 @@
                        after-marker)
         length (number numeric-part)]
     (when-not length
-      (throw (ex-info "Invalid array length in bracket segment"
+      (throw (ex-info "Invalid array length in bracket segment: must be a number"
                       {:type :invalid-bracket-segment
-                       :input bracket-content})))
+                       :input bracket-content
+                       :suggestion "Use a numeric length: [3] or [#5] or [10|]"
+                       :examples ["[3]" "[#5]" "[10|]" "[2\t]"]})))
     {:length (int length)
      :delimiter delimiter
      :has-length-marker has-marker}))
@@ -246,9 +252,11 @@
         open-bracket (str/index-of line "[")
         close-bracket (str/index-of line "]")]
     (when (or (nil? open-bracket) (nil? close-bracket))
-      (throw (ex-info "Array header must contain bracket segment"
+      (throw (ex-info "Array header must contain bracket segment with length"
                       {:type :invalid-array-header
-                       :line line})))
+                       :line line
+                       :suggestion "Add array length in brackets: key[N]: values"
+                       :examples ["tags[3]: a,b,c" "[2]{id,name}:" "items[5]:"]})))
     (let [;; Extract key prefix (before [)
             key-part (when (> open-bracket 0)
                        (str/trim (subs line 0 open-bracket)))
