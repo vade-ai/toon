@@ -27,6 +27,7 @@ Based on benchmarks using the GPT-5 `o200k_base` tokenizer:
 - **56.0%** reduction vs XML
 
 Real-world examples:
+
 - **GitHub repositories** (100 items): 42.3% fewer tokens than JSON
 - **Daily analytics** (180 days): 58.9% fewer tokens than JSON
 - **E-commerce orders**: 35.4% fewer tokens than JSON
@@ -42,16 +43,19 @@ Real-world examples:
 ### When to Use TOON
 
 **TOON excels at:**
+
 - Uniform arrays of objects (same fields, primitive values)
 - Large datasets with consistent structure
 - Tabular data with multiple rows
 
 **JSON is better for:**
+
 - Non-uniform data with varying field sets
 - Deeply nested structures
 - Mixed-type collections
 
 **CSV is more compact for:**
+
 - Flat, uniform tables without any nesting
 - Data without nested objects or arrays
 
@@ -60,13 +64,13 @@ Real-world examples:
 ### Clojure CLI/deps.edn
 
 ```clojure
-com.vadelabs/toon {:mvn/version "2025.11.05.8"}
+com.vadelabs/toon {:mvn/version "2025-11-05-10"}
 ```
 
 ### Leiningen/Boot
 
 ```clojure
-[com.vadelabs/toon "2025.11.05.8"]
+[com.vadelabs/toon "2025-11-05-10"]
 ```
 
 ## Quick Start

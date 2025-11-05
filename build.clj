@@ -7,17 +7,19 @@
 
 (defn- date-commit-count-version []
   (let [date (.format (java.time.LocalDate/now)
-                      (java.time.format.DateTimeFormatter/ofPattern "yyyy.MM.dd"))
-        today-midnight (str date "T00:00:00")]
+                      (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd"))
+        today-midnight (str (.format (java.time.LocalDate/now)
+                                     (java.time.format.DateTimeFormatter/ofPattern "yyyy.MM.dd"))
+                            "T00:00:00")]
     (try
       (let [proc (.exec (Runtime/getRuntime) (into-array String ["git" "log" "--since" today-midnight "--oneline"]))
             _ (.waitFor proc)
             output (slurp (.getInputStream proc))
             commit-count (if (empty? output) 0 (count (clojure.string/split-lines output)))]
-        (format "%s.%d" date commit-count))
+        (format "%s-%d" date commit-count))
       (catch Exception _
         ;; Fallback if git is not available
-        (format "%s.0" date)))))
+        (format "%s-0" date)))))
 
 (def version (date-commit-count-version))
 (def class-dir "target/classes")
