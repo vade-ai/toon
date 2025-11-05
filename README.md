@@ -436,7 +436,7 @@ Token counts are measured using the GPT-5 `o200k_base` tokenizer. Actual savings
 
 ## License
 
-Copyright © 2025 Pragyan
+Copyright © 2025 Vade Labs Pvt. Ltd.
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 
