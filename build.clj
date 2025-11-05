@@ -4,13 +4,26 @@
             [deps-deploy.deps-deploy :as dd]))
 
 (def lib 'com.vadelabs/toon)
-(def version "0.1.0-SNAPSHOT")
-#_ ; alternatively, use MAJOR.MINOR.COMMITS:
-(def version (format "1.0.%s" (b/git-count-revs nil)))
+
+(defn- date-commit-count-version []
+  (let [date (.format (java.time.LocalDate/now)
+                      (java.time.format.DateTimeFormatter/ofPattern "yyyy.MM.dd"))
+        today-midnight (str date "T00:00:00")]
+    (try
+      (let [proc (.exec (Runtime/getRuntime) (into-array String ["git" "log" "--since" today-midnight "--oneline"]))
+            _ (.waitFor proc)
+            output (slurp (.getInputStream proc))
+            commit-count (if (empty? output) 0 (count (clojure.string/split-lines output)))]
+        (format "%s.%d" date commit-count))
+      (catch Exception _
+        ;; Fallback if git is not available
+        (format "%s.0" date)))))
+
+(def version (date-commit-count-version))
 (def class-dir "target/classes")
 
 (defn- pom-template [version]
-  [[:description "FIXME: my new library."]
+  [[:description "TOON (Token-Oriented Object Notation) - A compact data format optimized for LLMs, reducing token usage by 30-60% compared to JSON while maintaining readability"]
    [:url "https://github.com/vadelabs/toon"]
    [:licenses
     [:license
@@ -18,7 +31,8 @@
      [:url "http://www.eclipse.org/legal/epl-v10.html"]]]
    [:developers
     [:developer
-     [:name "Pragyan"]]]
+     [:name "Pragyan"]
+     [:email "pragyan@vadelabs.com"]]]
    [:scm
     [:url "https://github.com/vadelabs/toon"]
     [:connection "scm:git:https://github.com/vadelabs/toon.git"]
