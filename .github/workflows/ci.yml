@@ -5,8 +5,6 @@ on:
     branches: [ main ]
   push:
     branches: [ main ]
-    tags:
-      - 'v*'
 
 jobs:
   test:
@@ -86,36 +84,3 @@ jobs:
         with:
           name: coverage-report-html
           path: target/coverage/index.html
-
-  deploy:
-    name: deploy
-    runs-on: ubuntu-24.04
-    needs: [test, coverage]
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-
-      - uses: DeLaGuardo/setup-clojure@13.4
-        with:
-          cli: 'latest'
-          bb: 'latest'
-
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.m2/repository
-            ~/.gitlibs
-            ~/.clojure
-          key: clojure-deps-${{ hashFiles('**/deps.edn') }}
-          restore-keys: clojure-deps-
-
-      - name: Build and deploy to Clojars
-        env:
-          CLOJARS_USERNAME: ${{ secrets.CLOJARS_USERNAME }}
-          CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
-        run: bb ci:deploy
