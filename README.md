@@ -353,10 +353,19 @@ bb test:all
 
 # Run CI pipeline with tests
 bb ci
+
+# Run test coverage (HTML report in target/coverage)
+bb coverage
+
+# Run coverage with text summary
+bb coverage:text
+
+# Run coverage with summary only
+bb coverage:summary
 ```
 
 The library includes:
-- 340+ unit tests
+- 340+ unit tests with **90%+ code coverage**
 - Property-based tests using test.check
 - Comprehensive roundtrip testing
 - Edge case coverage
