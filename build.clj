@@ -1,16 +1,18 @@
 (ns build
   (:refer-clojure :exclude [test])
-  (:require [clojure.tools.build.api :as b]
-            [deps-deploy.deps-deploy :as dd]))
+  (:require
+    [clojure.tools.build.api :as b]
+    [deps-deploy.deps-deploy :as dd]))
+
 
 (def lib 'com.vadelabs/toon)
 
-(defn- date-commit-count-version []
+
+(defn- date-commit-count-version
+  []
   (let [date (.format (java.time.LocalDate/now)
-                      (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd"))
-        today-midnight (str (.format (java.time.LocalDate/now)
-                                     (java.time.format.DateTimeFormatter/ofPattern "yyyy.MM.dd"))
-                            "T00:00:00")]
+                      (java.time.format.DateTimeFormatter/ofPattern "yyyy.MM.dd"))
+        today-midnight (str date "T00:00:00")]
     (try
       (let [proc (.exec (Runtime/getRuntime) (into-array String ["git" "log" "--since" today-midnight "--oneline"]))
             _ (.waitFor proc)
@@ -21,10 +23,13 @@
         ;; Fallback if git is not available
         (format "%s-0" date)))))
 
+
 (def version (date-commit-count-version))
 (def class-dir "target/classes")
 
-(defn- pom-template [version]
+
+(defn- pom-template
+  [version]
   [[:description "Clojure/ClojureScript implementation of TOON v1.3 (Token-Oriented Object Notation) - A compact data format optimized for LLMs, achieving 49% fewer tokens than formatted JSON while maintaining readability and structure"]
    [:url "https://github.com/vadelabs/toon"]
    [:licenses
@@ -41,17 +46,22 @@
     [:developerConnection "scm:git:ssh:git@github.com:vadelabs/toon.git"]
     [:tag (str "v" version)]]])
 
-(defn- jar-opts [opts]
-  (assoc opts
-          :lib lib   :version version
-          :jar-file  (format "target/%s-%s.jar" lib version)
-          :basis     (b/create-basis {})
-          :class-dir class-dir
-          :target    "target"
-          :src-dirs  ["src"]
-          :pom-data  (pom-template version)))
 
-(defn jar "Build the JAR." [opts]
+(defn- jar-opts
+  [opts]
+  (assoc opts
+         :lib lib   :version version
+         :jar-file  (format "target/%s-%s.jar" lib version)
+         :basis     (b/create-basis {})
+         :class-dir class-dir
+         :target    "target"
+         :src-dirs  ["src"]
+         :pom-data  (pom-template version)))
+
+
+(defn jar
+  "Build the JAR."
+  [opts]
   (b/delete {:path "target"})
   (let [opts (jar-opts opts)]
     (println "\nWriting pom.xml...")
@@ -62,12 +72,18 @@
     (b/jar opts))
   opts)
 
-(defn install "Install the JAR locally." [opts]
+
+(defn install
+  "Install the JAR locally."
+  [opts]
   (let [opts (jar-opts opts)]
     (b/install opts))
   opts)
 
-(defn deploy "Deploy the JAR to Clojars." [opts]
+
+(defn deploy
+  "Deploy the JAR to Clojars."
+  [opts]
   (let [{:keys [jar-file] :as opts} (jar-opts opts)]
     (dd/deploy {:installer :remote :artifact (b/resolve-path jar-file)
                 :pom-file (b/pom-path (select-keys opts [:lib :class-dir]))}))

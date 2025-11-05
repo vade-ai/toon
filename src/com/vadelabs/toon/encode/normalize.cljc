@@ -11,6 +11,7 @@
   - NaN/Infinity → nil
   - Functions/vars → nil")
 
+
 ;; ============================================================================
 ;; Normalization
 ;; ============================================================================
@@ -140,24 +141,36 @@
     :else
     nil))
 
+
 ;; ============================================================================
 ;; Type Guards
 ;; ============================================================================
 
-(defn primitive? [value]
+(defn primitive?
+  [value]
   (or (nil? value) (boolean? value) (number? value) (string? value)))
 
-(defn json-array? [value]
+
+(defn json-array?
+  [value]
   (vector? value))
 
-(defn json-object? [value]
+
+(defn json-object?
+  [value]
   (map? value))
 
-(defn array-of-primitives? [value]
+
+(defn array-of-primitives?
+  [value]
   (and (vector? value) (every? primitive? value)))
 
-(defn array-of-objects? [value]
+
+(defn array-of-objects?
+  [value]
   (and (vector? value) (seq value) (every? json-object? value)))
 
-(defn array-of-arrays? [value]
+
+(defn array-of-arrays?
+  [value]
   (and (vector? value) (seq value) (every? json-array? value)))

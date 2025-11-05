@@ -1,7 +1,9 @@
 (ns com.vadelabs.toon.utils-test
-  (:require #?(:clj [clojure.test :refer [deftest is testing]]
-               :cljs [cljs.test :refer [deftest is testing]])
-            [com.vadelabs.toon.utils :as utils]))
+  (:require
+    #?(:clj [clojure.test :refer [deftest is testing]]
+       :cljs [cljs.test :refer [deftest is testing]])
+    [com.vadelabs.toon.utils :as utils]))
+
 
 ;; ============================================================================
 ;; Escape String Tests (JSON-style escaping)
@@ -12,24 +14,29 @@
     (is (= "C:\\\\path" (utils/escaped "C:\\path")))
     (is (= "a\\\\b\\\\c" (utils/escaped "a\\b\\c")))))
 
+
 (deftest escape-double-quote-test
   (testing "Double quotes are escaped with backslash"
     (is (= "say \\\"hi\\\"" (utils/escaped "say \"hi\"")))
     (is (= "\\\"quoted\\\"" (utils/escaped "\"quoted\"")))))
+
 
 (deftest escape-newline-test
   (testing "Newlines are escaped to \\n"
     (is (= "line1\\nline2" (utils/escaped "line1\nline2")))
     (is (= "a\\nb\\nc" (utils/escaped "a\nb\nc")))))
 
+
 (deftest escape-carriage-return-test
   (testing "Carriage returns are escaped to \\r"
     (is (= "line1\\rline2" (utils/escaped "line1\rline2")))))
+
 
 (deftest escape-tab-test
   (testing "Tabs are escaped to \\t"
     (is (= "a\\tb" (utils/escaped "a\tb")))
     (is (= "col1\\tcol2\\tcol3" (utils/escaped "col1\tcol2\tcol3")))))
+
 
 (deftest escape-combined-test
   (testing "Multiple escape sequences work correctly"
@@ -37,12 +44,14 @@
     (is (= "C:\\\\path\\\\file.txt" (utils/escaped "C:\\path\\file.txt")))
     (is (= "a\\\\b\\\"c\\nd" (utils/escaped "a\\b\"c\nd")))))
 
+
 (deftest escape-order-test
   (testing "Backslash is escaped first to avoid double-escaping"
     ;; Input: \n (literal backslash + n, not newline)
     ;; Should become: \\n (escaped backslash + n)
     ;; NOT: \\\\n (which would be double-escaping)
     (is (= "\\\\n" (utils/escaped "\\n")))))
+
 
 ;; ============================================================================
 ;; Pattern Detection Tests
@@ -81,6 +90,7 @@
     (is (not (utils/numeric-like? " 42")))
     (is (not (utils/numeric-like? "42 ")))))
 
+
 (deftest structural-chars-detection-test
   (testing "Structural characters are detected"
     (is (utils/has-structural-chars? "[test]"))
@@ -94,6 +104,7 @@
     (is (not (utils/has-structural-chars? "simple")))
     (is (not (utils/has-structural-chars? "hello world")))
     (is (not (utils/has-structural-chars? "123")))))
+
 
 ;; Removed has-control-chars?, has-backslash?, has-whitespace-padding? tests
 ;; These are now inlined in needs-quoting?, functionality tested through comprehensive tests below
@@ -118,12 +129,14 @@
     (is (utils/needs-quoting? "  "))
     (is (utils/needs-quoting? "\t"))))
 
+
 (deftest whitespace-padding-needs-quoting-test
   (testing "Strings with leading/trailing whitespace need quoting"
     (is (utils/needs-quoting? " leading"))
     (is (utils/needs-quoting? "trailing "))
     (is (utils/needs-quoting? " both "))
     (is (utils/needs-quoting? "\tleading-tab"))))
+
 
 (deftest boolean-literal-needs-quoting-test
   (testing "Boolean literals need quoting"
@@ -134,6 +147,7 @@
     (is (not (utils/needs-quoting? "True")))
     (is (not (utils/needs-quoting? "FALSE")))))
 
+
 (deftest null-literal-needs-quoting-test
   (testing "Null literal needs quoting"
     (is (utils/needs-quoting? "null")))
@@ -141,6 +155,7 @@
   (testing "Case-sensitive: only exact match needs quoting"
     (is (not (utils/needs-quoting? "Null")))
     (is (not (utils/needs-quoting? "NULL")))))
+
 
 (deftest numeric-like-needs-quoting-test
   (testing "Integer-like strings need quoting"
@@ -162,6 +177,7 @@
     (is (not (utils/numeric-like? "42a")))
     (is (not (utils/numeric-like? "a42")))))
 
+
 (deftest structural-chars-need-quoting-test
   (testing "Structural characters need quoting"
     (is (utils/needs-quoting? "[test]"))
@@ -169,6 +185,7 @@
     (is (utils/needs-quoting? "- item"))
     (is (utils/needs-quoting? "a[0]"))
     (is (utils/needs-quoting? "value-123"))))
+
 
 (deftest delimiter-needs-quoting-test
   (testing "Strings containing delimiter need quoting"
@@ -181,26 +198,31 @@
     (is (not (utils/needs-quoting? "a,b" "\t")))
     (is (not (utils/needs-quoting? "a,b" "|")))))
 
+
 (deftest colon-needs-quoting-test
   (testing "Strings containing colon need quoting"
     (is (utils/needs-quoting? "key:value"))
     (is (utils/needs-quoting? "http://example.com"))))
+
 
 (deftest quote-needs-quoting-test
   (testing "Strings containing quotes need quoting"
     (is (utils/needs-quoting? "say \"hi\""))
     (is (utils/needs-quoting? "\"quoted\""))))
 
+
 (deftest backslash-needs-quoting-test
   (testing "Strings containing backslash need quoting"
     (is (utils/needs-quoting? "C:\\path"))
     (is (utils/needs-quoting? "a\\b"))))
+
 
 (deftest control-chars-need-quoting-test
   (testing "Strings with control characters need quoting"
     (is (utils/needs-quoting? "line1\nline2"))
     (is (utils/needs-quoting? "a\tb"))
     (is (utils/needs-quoting? "line1\rline2"))))
+
 
 ;; ============================================================================
 ;; quote-string Tests
@@ -212,16 +234,19 @@
     (is (= "\"world\"" (utils/wrap "world")))
     (is (= "\"123\"" (utils/wrap "123")))))
 
+
 (deftest quote-string-escapes-quotes-test
   (testing "Internal quotes are escaped with backslash"
     (is (= "\"say \\\"hi\\\"\"" (utils/wrap "say \"hi\"")))
     (is (= "\"\\\"quoted\\\"\"" (utils/wrap "\"quoted\"")))
     (is (= "\"a\\\"b\\\"c\"" (utils/wrap "a\"b\"c")))))
 
+
 (deftest quote-string-escapes-backslash-test
   (testing "Backslashes are escaped"
     (is (= "\"C:\\\\path\"" (utils/wrap "C:\\path")))
     (is (= "\"a\\\\b\"" (utils/wrap "a\\b")))))
+
 
 (deftest quote-string-escapes-control-chars-test
   (testing "Control characters are escaped"
@@ -229,15 +254,18 @@
     (is (= "\"a\\tb\"" (utils/wrap "a\tb")))
     (is (= "\"line1\\rline2\"" (utils/wrap "line1\rline2")))))
 
+
 (deftest quote-string-combined-escaping-test
   (testing "Multiple escape sequences work together"
     (is (= "\"say \\\"hi\\\"\\nbye\"" (utils/wrap "say \"hi\"\nbye")))
     (is (= "\"C:\\\\path\\\\file.txt\"" (utils/wrap "C:\\path\\file.txt")))
     (is (= "\"a\\\\b\\\"c\\nd\"" (utils/wrap "a\\b\"c\nd")))))
 
+
 (deftest quote-empty-string-test
   (testing "Empty strings are quoted"
     (is (= "\"\"" (utils/wrap "")))))
+
 
 ;; ============================================================================
 ;; maybe-quote Tests
@@ -249,11 +277,13 @@
     (is (= "hello" (utils/maybe-quote "hello")))
     (is (= "world123" (utils/maybe-quote "world123")))))
 
+
 (deftest maybe-quote-reserved-literals-quoted-test
   (testing "Reserved literals are quoted"
     (is (= "\"true\"" (utils/maybe-quote "true")))
     (is (= "\"false\"" (utils/maybe-quote "false")))
     (is (= "\"null\"" (utils/maybe-quote "null")))))
+
 
 (deftest maybe-quote-numeric-quoted-test
   (testing "Numeric-like strings are quoted"
@@ -261,11 +291,13 @@
     (is (= "\"-3.14\"" (utils/maybe-quote "-3.14")))
     (is (= "\"1e-6\"" (utils/maybe-quote "1e-6")))))
 
+
 (deftest maybe-quote-structural-quoted-test
   (testing "Strings with structural characters are quoted"
     (is (= "\"[test]\"" (utils/maybe-quote "[test]")))
     (is (= "\"{key}\"" (utils/maybe-quote "{key}")))
     (is (= "\"- item\"" (utils/maybe-quote "- item")))))
+
 
 (deftest maybe-quote-delimiter-aware-test
   (testing "maybe-quote is delimiter-aware"
@@ -281,6 +313,7 @@
     (is (= "\"C:\\\\path\"" (utils/maybe-quote "C:\\path")))
     (is (= "\"line1\\nline2\"" (utils/maybe-quote "line1\nline2")))))
 
+
 ;; ============================================================================
 ;; Edge Cases and Real-World Examples
 ;; ============================================================================
@@ -290,6 +323,7 @@
     (is (= "café" (utils/maybe-quote "café")))
     (is (= "你好" (utils/maybe-quote "你好")))
     (is (= "🚀" (utils/maybe-quote "🚀")))))
+
 
 (deftest complex-real-world-strings-test
   (testing "Real-world examples"
@@ -332,6 +366,7 @@
     (is (not (utils/valid-unquoted-key? "")))             ; empty string
     ))
 
+
 (deftest maybe-quote-key-test
   (testing "Keys are quoted when they don't match valid pattern"
     ;; Valid keys remain unquoted
@@ -350,6 +385,7 @@
     (is (= "\"key\\nvalue\"" (utils/maybe-quote-key "key\nvalue")))
     (is (= "\"say \\\"hi\\\"\"" (utils/maybe-quote-key "say \"hi\"")))))
 
+
 ;; ============================================================================
 ;; String Search Utility Tests
 ;; ============================================================================
@@ -358,6 +394,7 @@
   (testing "Find closing quote in string"
     (is (= 5 (utils/closing-quote "hello\"" 0)))
     (is (= 6 (utils/closing-quote "ab\\\"cd\"" 0)))))
+
 
 (deftest find-unquoted-char-test
   (testing "Find character outside quoted sections"

@@ -1,10 +1,10 @@
 (ns com.vadelabs.toon.decode.decoders-test
   "Tests for root dispatcher functions."
   (:require
-   #?(:clj [clojure.test :refer [deftest is testing]]
-      :cljs [cljs.test :refer [deftest is testing]])
-   [com.vadelabs.toon.decode.scanner :as scanner]
-   [com.vadelabs.toon.decode.decoders :as decoders]))
+    #?(:clj [clojure.test :refer [deftest is testing]]
+       :cljs [cljs.test :refer [deftest is testing]])
+    [com.vadelabs.toon.decode.decoders :as decoders]
+    [com.vadelabs.toon.decode.scanner :as scanner]))
 
 
 ;; ============================================================================
@@ -18,6 +18,7 @@
           [result _] (decoders/array-from-header header-info cursor 1)]
       (is (= ["a" "b" "c"] result)))))
 
+
 (deftest array-from-header-tabular-test
   (testing "Dispatch to tabular-array for fields"
     (let [input "  1,Alice\n  2,Bob"  ; Indented at depth 1
@@ -27,6 +28,7 @@
           [result _] (decoders/array-from-header header-info cursor 1)]
       (is (= 2 (count result)))
       (is (= {"id" 1.0 "name" "Alice"} (first result))))))
+
 
 (deftest array-from-header-list-test
   (testing "Dispatch to list-array for neither inline nor tabular"
@@ -49,12 +51,14 @@
           result (decoders/value-from-lines cursor 2 true)]
       (is (= {} result)))))
 
+
 (deftest value-from-lines-primitive-test
   (testing "Single-line primitive without colon"
     (let [scan-result (scanner/to-parsed-lines "hello")
           cursor (scanner/cursor-from-scan-result scan-result)
           result (decoders/value-from-lines cursor 2 true)]
       (is (= "hello" result)))))
+
 
 (deftest value-from-lines-number-test
   (testing "Single-line number"
@@ -63,6 +67,7 @@
           result (decoders/value-from-lines cursor 2 true)]
       (is (= 42.0 result)))))
 
+
 (deftest value-from-lines-array-header-test
   (testing "Dispatch to array for root array header"
     (let [input "[3]: 1,2,3"
@@ -70,6 +75,7 @@
           cursor (scanner/cursor-from-scan-result scan-result)
           result (decoders/value-from-lines cursor 2 true)]
       (is (= [1.0 2.0 3.0] result)))))
+
 
 (deftest value-from-lines-tabular-array-test
   (testing "Dispatch to tabular array at root"
@@ -81,6 +87,7 @@
               {"id" 2.0 "name" "Bob"}]
              result)))))
 
+
 (deftest value-from-lines-object-test
   (testing "Dispatch to object for key-value lines"
     (let [input "name: Alice\nage: 30"
@@ -88,6 +95,7 @@
           cursor (scanner/cursor-from-scan-result scan-result)
           result (decoders/value-from-lines cursor 2 true)]
       (is (= {"name" "Alice" "age" 30.0} result)))))
+
 
 (deftest value-from-lines-nested-object-test
   (testing "Dispatch to object for nested structure"
@@ -111,6 +119,7 @@
       (is (= {"config" {"name" "MyApp"
                         "features" ["auth" "logging"]}}
              result)))))
+
 
 (deftest dispatcher-root-list-array-test
   (testing "Root dispatcher handles list array at top level"

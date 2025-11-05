@@ -1,9 +1,9 @@
 (ns com.vadelabs.toon.interface
   (:require
     [com.vadelabs.toon.decode.decoders :as decoders]
-    [com.vadelabs.toon.encode.normalize]
-    [com.vadelabs.toon.encode.encoders]
     [com.vadelabs.toon.decode.scanner :as scanner]
+    [com.vadelabs.toon.encode.encoders]
+    [com.vadelabs.toon.encode.normalize]
     [com.vadelabs.toon.encode.writer]))
 
 

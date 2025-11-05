@@ -3,14 +3,14 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project uses date-based versioning: `YYYY-MM-DD-N` where N is the commit count for that day.
+and this project uses date-based versioning: `YYYY.MM.DD-N` where N is the commit count for that day.
 
 This library implements [TOON v1.3 specification](https://github.com/toon-format/spec) (2025-10-31).
 
 ## [Unreleased]
 
 ### Added
-- Date-commit-count versioning scheme (YYYY-MM-DD-N format)
+- Date-commit-count versioning scheme (YYYY.MM.DD-N format)
 - Reference to official TOON v1.3 specification
 - Comprehensive README with:
   - Token efficiency benchmarks (49% reduction vs formatted JSON)

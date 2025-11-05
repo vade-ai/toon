@@ -128,14 +128,14 @@
                        :suggestion "Add a colon between key and value: - key: value"
                        :examples ["- name: Alice" "- id: 123" "- active: true"]})))
     (let [key-part (subs after-marker 0 colon-pos)
-            value-part (str/trim (subs after-marker (inc colon-pos)))
-            first-key (parser/key-token key-part)
-            first-value (if (empty? value-part)
-                          nil
-                          (parser/primitive-token value-part strict))
-            ;; Advance past the hyphen line
-            cursor-after-first (scanner/advance-cursor cursor)
-            ;; Decode remaining key-values at depth+1
-            [rest-obj remaining-cursor] (object cursor-after-first (inc depth) delimiter strict list-item-fn)]
-        ;; Merge first key-value with rest
-        [(assoc rest-obj first-key first-value) remaining-cursor])))
+          value-part (str/trim (subs after-marker (inc colon-pos)))
+          first-key (parser/key-token key-part)
+          first-value (if (empty? value-part)
+                        nil
+                        (parser/primitive-token value-part strict))
+          ;; Advance past the hyphen line
+          cursor-after-first (scanner/advance-cursor cursor)
+          ;; Decode remaining key-values at depth+1
+          [rest-obj remaining-cursor] (object cursor-after-first (inc depth) delimiter strict list-item-fn)]
+      ;; Merge first key-value with rest
+      [(assoc rest-obj first-key first-value) remaining-cursor])))

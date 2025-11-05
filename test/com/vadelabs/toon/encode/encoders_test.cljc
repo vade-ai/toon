@@ -1,9 +1,11 @@
 (ns com.vadelabs.toon.encode.encoders-test
-  (:require #?(:clj [clojure.test :refer [deftest is testing]]
-               :cljs [cljs.test :refer [deftest is testing]])
-            [com.vadelabs.toon.encode.encoders :as obj]
-            [com.vadelabs.toon.encode.writer :as writer]
-            [clojure.string :as str]))
+  (:require
+    [clojure.string :as str]
+    #?(:clj [clojure.test :refer [deftest is testing]]
+       :cljs [cljs.test :refer [deftest is testing]])
+    [com.vadelabs.toon.encode.encoders :as obj]
+    [com.vadelabs.toon.encode.writer :as writer]))
+
 
 ;; Test options helper
 (defn make-options
@@ -13,6 +15,7 @@
    {:delimiter delimiter
     :length-marker length-marker
     :indent 2}))
+
 
 ;; ============================================================================
 ;; Simple Key-Value Pair Tests
@@ -36,11 +39,13 @@
           w (obj/key-value-pair "value" nil opts 0 (writer/create))]
       (is (= "value: null" (writer/to-string w))))))
 
+
 (deftest encode-string-key-value-with-quoting-test
   (testing "Encode key with string value needing quotes"
     (let [opts (make-options)
           w (obj/key-value-pair "desc" "hello, world" opts 0 (writer/create))]
       (is (= "desc: \"hello, world\"" (writer/to-string w))))))
+
 
 (deftest encode-key-value-with-indentation-test
   (testing "Encode key-value pair with indentation"
@@ -52,6 +57,7 @@
           w (obj/key-value-pair "name" "Alice" opts 2 (writer/create))]
       (is (= "    name: Alice" (writer/to-string w))))))
 
+
 ;; ============================================================================
 ;; Array Value Tests
 ;; ============================================================================
@@ -61,6 +67,7 @@
     (let [opts (make-options)
           w (obj/key-value-pair "tags" [] opts 0 (writer/create))]
       (is (= "tags[0]" (writer/to-string w))))))
+
 
 (deftest encode-key-with-primitive-array-test
   (testing "Encode key with array of primitives"
@@ -73,11 +80,13 @@
           w (obj/key-value-pair "scores" [100 95 88] opts 0 (writer/create))]
       (is (= "scores[3]: 100,95,88" (writer/to-string w))))))
 
+
 (deftest encode-key-with-primitive-array-length-marker-test
   (testing "Encode key with array using length marker"
     (let [opts (make-options "," "#")
           w (obj/key-value-pair "items" [1 2 3] opts 0 (writer/create))]
       (is (= "items[#3]: 1,2,3" (writer/to-string w))))))
+
 
 (deftest encode-key-with-array-of-objects-test
   (testing "Encode key with array of objects"
@@ -88,12 +97,14 @@
       ;; The key is followed by array header on same line, then tabular data
       (is (= "users[2]\n[2]{id,name}:\n  1,Alice\n  2,Bob" (writer/to-string w))))))
 
+
 (deftest encode-key-with-array-of-arrays-test
   (testing "Encode key with array of arrays in list format"
     (let [opts (make-options)
           test-arr [[1 2] [3 4]]
           w (obj/key-value-pair "matrix" test-arr opts 0 (writer/create))]
       (is (= "matrix[2]:\n  - [2]: 1,2\n  - [2]: 3,4" (writer/to-string w))))))
+
 
 ;; ============================================================================
 ;; Nested Object Tests
@@ -113,6 +124,7 @@
           w (obj/key-value-pair "data" nested opts 0 (writer/create))]
       (is (= "data:\n  user:\n    name: Alice\n    age: 30" (writer/to-string w))))))
 
+
 ;; ============================================================================
 ;; Full Object Encoding Tests
 ;; ============================================================================
@@ -126,6 +138,7 @@
       ;; Note: Map order may vary
       (is (or (= "name: Alice\nage: 30" result)
               (= "age: 30\nname: Alice" result))))))
+
 
 (deftest encode-object-with-various-types-test
   (testing "Encode object with different value types"
@@ -142,6 +155,7 @@
       (is (str/includes? result "active: true"))
       (is (str/includes? result "score: null")))))
 
+
 (deftest encode-object-with-array-values-test
   (testing "Encode object with array values"
     (let [opts (make-options)
@@ -152,12 +166,14 @@
       (is (str/includes? result "name: Alice"))
       (is (str/includes? result "tags[2]: admin,user")))))
 
+
 (deftest encode-nested-object-test
   (testing "Encode object with nested object"
     (let [opts (make-options)
           obj {"user" {"name" "Alice" "age" 30}}
           w (obj/object obj opts 0 (writer/create))]
       (is (= "user:\n  name: Alice\n  age: 30" (writer/to-string w))))))
+
 
 (deftest encode-object-with-indentation-test
   (testing "Encode object at non-zero depth"
@@ -168,6 +184,7 @@
       ;; All lines should be indented
       (is (or (= "  name: Alice\n  age: 30" result)
               (= "  age: 30\n  name: Alice" result))))))
+
 
 ;; ============================================================================
 ;; encode-value Dispatch Tests
@@ -183,11 +200,13 @@
           w (obj/value "hello" opts 0 (writer/create))]
       (is (= "hello" (writer/to-string w))))))
 
+
 (deftest encode-value-array-test
   (testing "encode-value handles arrays"
     (let [opts (make-options)
           w (obj/value [1 2 3] opts 0 (writer/create))]
       (is (= "[3]: 1,2,3" (writer/to-string w))))))
+
 
 (deftest encode-value-object-test
   (testing "encode-value handles objects"
@@ -196,6 +215,7 @@
           result (writer/to-string w)]
       (is (or (= "a: 1\nb: 2" result)
               (= "b: 2\na: 1" result))))))
+
 
 ;; ============================================================================
 ;; Complex Nested Structure Tests
@@ -219,6 +239,7 @@
       (is (str/includes? result "settings:"))
       (is (str/includes? result "notifications: true"))
       (is (str/includes? result "theme: dark")))))
+
 
 (deftest encode-object-with-tab-delimiter-test
   (testing "Encode object with tab delimiter"

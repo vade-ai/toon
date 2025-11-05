@@ -1,12 +1,12 @@
 (ns com.vadelabs.toon.decode.arrays-test
   "Tests for array decoding functions."
   (:require
-   #?(:clj [clojure.test :refer [deftest is testing]]
-      :cljs [cljs.test :refer [deftest is testing]])
-   [com.vadelabs.toon.decode.scanner :as scanner]
-   [com.vadelabs.toon.decode.parser :as parser]
-   [com.vadelabs.toon.decode.arrays :as arrays]
-   [com.vadelabs.toon.decode.items :as items]))
+    #?(:clj [clojure.test :refer [deftest is testing]]
+       :cljs [cljs.test :refer [deftest is testing]])
+    [com.vadelabs.toon.decode.arrays :as arrays]
+    [com.vadelabs.toon.decode.items :as items]
+    [com.vadelabs.toon.decode.parser :as parser]
+    [com.vadelabs.toon.decode.scanner :as scanner]))
 
 
 ;; ============================================================================
@@ -19,11 +19,13 @@
           result (arrays/inline-primitive-array header-info)]
       (is (= ["a" "b" "c"] result)))))
 
+
 (deftest inline-primitive-array-numbers-test
   (testing "Decode inline array with numbers"
     (let [header-info {:length 3 :delimiter "," :inline-values "1,2,3"}
           result (arrays/inline-primitive-array header-info)]
       (is (= [1.0 2.0 3.0] result)))))
+
 
 (deftest inline-primitive-array-mixed-test
   (testing "Decode inline array with mixed types"
@@ -31,11 +33,13 @@
           result (arrays/inline-primitive-array header-info)]
       (is (= [1.0 "hello" true nil] result)))))
 
+
 (deftest inline-primitive-array-pipe-delimiter-test
   (testing "Decode inline array with pipe delimiter"
     (let [header-info {:length 3 :delimiter "|" :inline-values "a|b|c"}
           result (arrays/inline-primitive-array header-info)]
       (is (= ["a" "b" "c"] result)))))
+
 
 (deftest inline-primitive-array-empty-test
   (testing "Decode empty inline array"
@@ -43,13 +47,14 @@
           result (arrays/inline-primitive-array header-info)]
       (is (= [] result)))))
 
+
 (deftest inline-primitive-array-length-mismatch-test
   (testing "Throw on length mismatch in strict mode"
     (let [header-info {:length 2 :delimiter "," :inline-values "a,b,c"}]
       (is (thrown-with-msg?
-           #?(:clj Exception :cljs js/Error)
-           #"Array length mismatch"
-           (arrays/inline-primitive-array header-info true))))))
+            #?(:clj Exception :cljs js/Error)
+            #"Array length mismatch"
+            (arrays/inline-primitive-array header-info true))))))
 
 
 ;; ============================================================================
@@ -68,6 +73,7 @@
       (is (= {"id" 1.0 "name" "Alice"} (first result)))
       (is (= {"id" 2.0 "name" "Bob"} (second result))))))
 
+
 (deftest tabular-array-three-columns-test
   (testing "Decode tabular array with three columns"
     (let [input "[3]{a,b,c}:\n  1,2,3\n  4,5,6\n  7,8,9"
@@ -78,6 +84,7 @@
           [result _] (arrays/tabular-array header-info cursor-after-header 1)]
       (is (= 3 (count result)))
       (is (= {"a" 1.0 "b" 2.0 "c" 3.0} (first result))))))
+
 
 (deftest tabular-array-with-strings-test
   (testing "Decode tabular array with quoted strings"
@@ -106,6 +113,7 @@
           [result _] (arrays/list-array header-info cursor-after-header 1 true items/list-item)]
       (is (= ["hello" 42.0 true] result)))))
 
+
 (deftest list-array-inline-arrays-test
   (testing "Decode list array with inline arrays"
     (let [input "[2]:\n  - [2]: 1,2\n  - [3]: 3,4,5"
@@ -115,6 +123,7 @@
           header-info (parser/array-header-line (:content header-line))
           [result _] (arrays/list-array header-info cursor-after-header 1 true items/list-item)]
       (is (= [[1.0 2.0] [3.0 4.0 5.0]] result)))))
+
 
 (deftest list-array-objects-test
   (testing "Decode list array with objects"

@@ -1,8 +1,9 @@
 (ns com.vadelabs.toon.decode.scanner-test
   (:require
-   #?(:clj [clojure.test :refer [deftest is testing]]
-      :cljs [cljs.test :refer [deftest is testing]])
-   [com.vadelabs.toon.decode.scanner :as scanner]))
+    #?(:clj [clojure.test :refer [deftest is testing]]
+       :cljs [cljs.test :refer [deftest is testing]])
+    [com.vadelabs.toon.decode.scanner :as scanner]))
+
 
 ;; ============================================================================
 ;; to-parsed-lines Tests
@@ -27,6 +28,7 @@
       (is (= 0 (:depth (second lines))))
       (is (= 0 (:indent (second lines))))
       (is (= 2 (:line-number (second lines)))))))
+
 
 (deftest parse-nested-structure-test
   (testing "Parse nested structure with multiple depths"
@@ -53,6 +55,7 @@
       (is (= 2 (:depth (nth lines 3))))
       (is (= 4 (:indent (nth lines 3)))))))
 
+
 (deftest parse-with-blank-lines-test
   (testing "Track blank lines separately"
     (let [input "a: 1\n\nb: 2\n\n\nc: 3"
@@ -71,11 +74,13 @@
       (is (= 4 (:line-number (second blank-lines))))
       (is (= 5 (:line-number (nth blank-lines 2)))))))
 
+
 (deftest parse-empty-input-test
   (testing "Handle empty input"
     (let [result (scanner/to-parsed-lines "" 2 true)]
       (is (= 0 (count (:lines result))))
       (is (= 0 (count (:blank-lines result)))))))
+
 
 (deftest parse-single-line-test
   (testing "Handle single line input"
@@ -85,6 +90,7 @@
       (is (= "hello" (:content (first lines))))
       (is (= 0 (:depth (first lines))))
       (is (= 1 (:line-number (first lines)))))))
+
 
 (deftest parse-with-different-indent-size-test
   (testing "Parse with indent size of 4"
@@ -98,6 +104,7 @@
       (is (= 2 (:depth (nth lines 2))))
       (is (= 8 (:indent (nth lines 2)))))))
 
+
 ;; ============================================================================
 ;; Strict Mode Validation Tests
 ;; ============================================================================
@@ -105,16 +112,18 @@
 (deftest strict-mode-rejects-tabs-test
   (testing "Strict mode rejects tabs in indentation"
     (is (thrown-with-msg?
-         #?(:clj Exception :cljs js/Error)
-         #"Tabs not allowed"
-         (scanner/to-parsed-lines "name: value\n\tindented: value" 2 true)))))
+          #?(:clj Exception :cljs js/Error)
+          #"Tabs not allowed"
+          (scanner/to-parsed-lines "name: value\n\tindented: value" 2 true)))))
+
 
 (deftest strict-mode-rejects-invalid-indentation-test
   (testing "Strict mode rejects indentation not multiple of indent-size"
     (is (thrown-with-msg?
-         #?(:clj Exception :cljs js/Error)
-         #"Indentation must be multiple of 2"
-         (scanner/to-parsed-lines "root:\n   child" 2 true)))))
+          #?(:clj Exception :cljs js/Error)
+          #"Indentation must be multiple of 2"
+          (scanner/to-parsed-lines "root:\n   child" 2 true)))))
+
 
 (deftest non-strict-mode-allows-tabs-test
   (testing "Non-strict mode allows tabs"
@@ -122,12 +131,14 @@
           lines (:lines result)]
       (is (= 2 (count lines))))))
 
+
 (deftest non-strict-mode-allows-invalid-indentation-test
   (testing "Non-strict mode allows invalid indentation multiples"
     (let [result (scanner/to-parsed-lines "root:\n   child" 2 false)
           lines (:lines result)]
       (is (= 2 (count lines)))
       (is (= 1 (:depth (second lines)))))))
+
 
 ;; ============================================================================
 ;; LineCursor Navigation Tests
@@ -139,8 +150,9 @@
           result (scanner/to-parsed-lines input)
           cursor (scanner/cursor-from-scan-result result)]
       (is (= "a: 1" (:content (scanner/peek-cursor cursor))))
-      (is (= "a: 1" (:content (scanner/peek-cursor cursor)))) ;; Still same
+      (is (= "a: 1" (:content (scanner/peek-cursor cursor)))) ; Still same
       (is (= 0 (:position cursor))))))
+
 
 (deftest cursor-next-test
   (testing "Next returns current line and advances cursor"
@@ -155,6 +167,7 @@
       (is (= "c: 3" (:content line3)))
       (is (= 3 (:position cursor4))))))
 
+
 (deftest cursor-advance-test
   (testing "Advance moves cursor forward by n steps"
     (let [input "a: 1\nb: 2\nc: 3\nd: 4"
@@ -163,6 +176,7 @@
           cursor2 (scanner/advance-cursor cursor 2)]
       (is (= 2 (:position cursor2)))
       (is (= "c: 3" (:content (scanner/peek-cursor cursor2)))))))
+
 
 (deftest cursor-at-end-test
   (testing "at-end? checks if cursor is exhausted"
@@ -173,6 +187,7 @@
       (let [cursor2 (scanner/advance-cursor cursor 2)]
         (is (scanner/at-end? cursor2))
         (is (nil? (scanner/peek-cursor cursor2)))))))
+
 
 (deftest cursor-peek-at-depth-test
   (testing "peek-at-depth returns line only if at target depth"
@@ -189,6 +204,7 @@
         (is (nil? (scanner/peek-at-depth cursor2 0)))
         (is (nil? (scanner/peek-at-depth cursor2 2)))))))
 
+
 (deftest cursor-has-more-at-depth-test
   (testing "has-more-at-depth? checks if more lines exist at depth"
     (let [input "a: 1\n  b: 2\n  c: 3\nd: 4"
@@ -201,6 +217,7 @@
       (let [cursor2 (scanner/advance-cursor cursor 1)]
         (is (scanner/has-more-at-depth? cursor2 1))
         (is (not (scanner/has-more-at-depth? cursor2 0)))))))
+
 
 (deftest cursor-get-blank-lines-in-range-test
   (testing "get-blank-lines-in-range extracts blank lines in range"
@@ -221,6 +238,7 @@
       (let [no-blanks (scanner/get-blank-lines-in-range cursor 1 1)]
         (is (= 0 (count no-blanks)))))))
 
+
 ;; ============================================================================
 ;; Edge Cases
 ;; ============================================================================
@@ -235,6 +253,7 @@
       (is (= 2 (:indent (first blank-lines))))
       (is (= 1 (:depth (first blank-lines)))))))
 
+
 (deftest parse-trailing-blank-line-test
   (testing "Trailing blank line is tracked"
     (let [input "a: 1\n"
@@ -245,6 +264,7 @@
       ;; Trailing newline creates an empty string after split
       (is (= 1 (count blank-lines))))))
 
+
 (deftest parse-only-blank-lines-test
   (testing "Input with only blank lines"
     (let [input "\n\n\n"
@@ -254,6 +274,7 @@
       (is (= 0 (count lines)))
       ;; "\n\n\n" splits into 4 empty strings (before first, between each, after last)
       (is (= 4 (count blank-lines))))))
+
 
 (deftest parse-array-header-test
   (testing "Parse array header lines"
@@ -266,6 +287,7 @@
       (is (= "- id: 2" (:content (nth lines 2))))
       (is (= 1 (:depth (nth lines 1)))))))
 
+
 (deftest parse-tabular-format-test
   (testing "Parse tabular array format"
     (let [input "items[2]{id,name}:\n  1,Alice\n  2,Bob"
@@ -277,6 +299,7 @@
       (is (= "2,Bob" (:content (nth lines 2))))
       (is (= 1 (:depth (nth lines 1))))
       (is (= 1 (:depth (nth lines 2)))))))
+
 
 (deftest cursor-lookup-test
   (testing "LineCursor supports keyword lookup"

@@ -8,7 +8,9 @@
   (:require
     [clojure.string :as str]
     [com.vadelabs.toon.constants :as const])
-  #?(:cljs (:require [goog.string])))
+  #?(:cljs
+     (:require
+       [goog.string])))
 
 
 ;; ============================================================================
@@ -205,6 +207,7 @@
     (boolean (re-matches #"^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$" value))
     ;; Leading zeros pattern: 05, 007
     (boolean (re-matches #"^0\d+$" value))))
+
 
 (defn has-structural-chars?
   "Returns true if value contains structural characters: [ ] { } -"

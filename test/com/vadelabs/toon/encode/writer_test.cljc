@@ -1,7 +1,9 @@
 (ns com.vadelabs.toon.encode.writer-test
-  (:require #?(:clj [clojure.test :refer [deftest is testing]]
-               :cljs [cljs.test :refer [deftest is testing]])
-            [com.vadelabs.toon.encode.writer :as writer]))
+  (:require
+    #?(:clj [clojure.test :refer [deftest is testing]]
+       :cljs [cljs.test :refer [deftest is testing]])
+    [com.vadelabs.toon.encode.writer :as writer]))
+
 
 ;; ============================================================================
 ;; LineWriter Creation Tests
@@ -19,6 +21,7 @@
       (is (writer/empty-writer? w))
       (is (= 0 (writer/line-count w)))
       (is (= "" (writer/to-string w))))))
+
 
 ;; ============================================================================
 ;; Push and Indentation Tests
@@ -39,6 +42,7 @@
       (is (= 3 (writer/line-count w)))
       (is (= "line1\nline2\nline3" (writer/to-string w))))))
 
+
 (deftest push-indentation-test
   (testing "Push lines with different indentation levels (2 spaces)"
     (let [w (-> (writer/create 2)
@@ -55,6 +59,7 @@
                 (writer/push 1 "level1")
                 (writer/push 2 "level2"))]
       (is (= "level0\n    level1\n        level2" (writer/to-string w))))))
+
 
 ;; ============================================================================
 ;; Whitespace Invariants Tests
@@ -74,6 +79,7 @@
                 (writer/push 2 "level2    "))]
       (is (= "level0\n  level1\n    level2" (writer/to-string w))))))
 
+
 (deftest no-trailing-newline-test
   (testing "No trailing newline in output"
     (let [w (-> (writer/create)
@@ -83,6 +89,7 @@
       (is (not (.endsWith result "\n")))
       (is (= "line1\nline2" result)))))
 
+
 (deftest empty-content-test
   (testing "Empty content is allowed"
     (let [w (-> (writer/create)
@@ -91,6 +98,7 @@
                 (writer/push 0 "content"))]
       (is (= 3 (writer/line-count w)))
       (is (= "\n  \ncontent" (writer/to-string w))))))
+
 
 ;; ============================================================================
 ;; Edge Cases Tests
@@ -106,12 +114,14 @@
       (is (= "root:\n  child:\n    grandchild: value\n  another-child: value2"
              (writer/to-string w))))))
 
+
 (deftest preserve-inner-spaces-test
   (testing "Inner spaces are preserved"
     (let [w (-> (writer/create)
                 (writer/push 0 "hello world")
                 (writer/push 1 "foo  bar  baz"))]
       (is (= "hello world\n  foo  bar  baz" (writer/to-string w))))))
+
 
 (deftest special-characters-test
   (testing "Special characters are preserved"
@@ -120,6 +130,7 @@
                 (writer/push 0 "emoji: 🚀")
                 (writer/push 0 "unicode: café"))]
       (is (= "name: \"Ada\"\nemoji: 🚀\nunicode: café" (writer/to-string w))))))
+
 
 (deftest high-depth-test
   (testing "High indentation depth"

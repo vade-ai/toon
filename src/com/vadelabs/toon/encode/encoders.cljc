@@ -5,16 +5,19 @@
   - Simple key-value pairs
   - Nested objects with indentation
   - Arrays as values"
-  (:require [com.vadelabs.toon.constants :as const]
-            [com.vadelabs.toon.encode.normalize :as norm]
-            [com.vadelabs.toon.encode.primitives :as prim]
-            [com.vadelabs.toon.encode.arrays :as array]
-            [com.vadelabs.toon.encode.writer :as writer]
-            [com.vadelabs.toon.utils :as quote]
-            [clojure.string :as str]))
+  (:require
+    [clojure.string :as str]
+    [com.vadelabs.toon.constants :as const]
+    [com.vadelabs.toon.encode.arrays :as array]
+    [com.vadelabs.toon.encode.normalize :as norm]
+    [com.vadelabs.toon.encode.primitives :as prim]
+    [com.vadelabs.toon.encode.writer :as writer]
+    [com.vadelabs.toon.utils :as quote]))
+
 
 ;; Forward declarations for mutual recursion
 (declare value object)
+
 
 ;; ============================================================================
 ;; Key-Value Pair Encoding (Helper Functions)
@@ -184,6 +187,7 @@
     :else
     writer))
 
+
 (defn object
   "Encodes a map to TOON format.
 
@@ -200,6 +204,7 @@
                (key-value-pair k v options depth w))
              writer
              obj))
+
 
 (defn value
   "Encodes any value to TOON format.

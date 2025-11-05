@@ -1,7 +1,9 @@
 (ns com.vadelabs.toon.encode.primitives-test
-  (:require #?(:clj [clojure.test :refer [deftest is testing]]
-               :cljs [cljs.test :refer [deftest is testing]])
-            [com.vadelabs.toon.encode.primitives :as prim]))
+  (:require
+    #?(:clj [clojure.test :refer [deftest is testing]]
+       :cljs [cljs.test :refer [deftest is testing]])
+    [com.vadelabs.toon.encode.primitives :as prim]))
+
 
 ;; ============================================================================
 ;; nil Encoding Tests
@@ -12,6 +14,7 @@
     (is (= "null" (prim/encode nil)))
     (is (= "null" (prim/encode nil ",")))
     (is (= "null" (prim/encode nil "\t")))))
+
 
 ;; ============================================================================
 ;; Boolean Encoding Tests
@@ -27,6 +30,7 @@
     (is (= "true" (prim/encode true "\t")))
     (is (= "false" (prim/encode false "|")))))
 
+
 ;; ============================================================================
 ;; Number Encoding Tests
 ;; ============================================================================
@@ -38,17 +42,20 @@
     (is (= "-7" (prim/encode -7)))
     (is (= "1000" (prim/encode 1000)))))
 
+
 (deftest float-encoding-test
   (testing "Floating point numbers encode to string representation"
     (is (= "3.14" (prim/encode 3.14)))
     (is (= "-0.5" (prim/encode -0.5)))
     (is (= "2.718" (prim/encode 2.718)))))
 
+
 (deftest number-encoding-delimiter-independent-test
   (testing "Number encoding is delimiter-independent"
     (is (= "42" (prim/encode 42 ",")))
     (is (= "42" (prim/encode 42 "\t")))
     (is (= "3.14" (prim/encode 3.14 "|")))))
+
 
 ;; ============================================================================
 ;; String Encoding Tests
@@ -60,11 +67,13 @@
     (is (= "world" (prim/encode "world")))
     (is (= "simple123" (prim/encode "simple123")))))
 
+
 (deftest string-with-delimiter-encoding-test
   (testing "Strings containing delimiter are quoted"
     (is (= "\"a,b\"" (prim/encode "a,b" ",")))
     (is (= "\"a\\tb\"" (prim/encode "a\tb" "\t")))  ; Tab is always escaped
     (is (= "\"a|b\"" (prim/encode "a|b" "|")))))
+
 
 (deftest string-delimiter-awareness-test
   (testing "String encoding is delimiter-aware"
@@ -78,10 +87,12 @@
     (is (= "\"a,b\"" (prim/encode "a,b" ",")))
     (is (= "\"a\\tb\"" (prim/encode "a\tb" "\t")))))
 
+
 (deftest string-with-quotes-encoding-test
   (testing "Strings containing quotes are quoted and escaped (JSON-style)"
     (is (= "\"say \\\"hi\\\"\"" (prim/encode "say \"hi\"")))
     (is (= "\"\\\"quoted\\\"\"" (prim/encode "\"quoted\"")))))
+
 
 (deftest string-with-special-chars-encoding-test
   (testing "Strings with special characters are quoted"
@@ -90,11 +101,13 @@
     (is (= "\" leading\"" (prim/encode " leading")))
     (is (= "\"trailing \"" (prim/encode "trailing ")))))
 
+
 (deftest empty-string-encoding-test
   (testing "Empty strings are quoted"
     (is (= "\"\"" (prim/encode "")))
     (is (= "\"\"" (prim/encode "" ",")))
     (is (= "\"\"" (prim/encode "" "\t")))))
+
 
 ;; ============================================================================
 ;; Default Delimiter Tests
@@ -106,6 +119,7 @@
     (is (= "\"a\\tb\"" (prim/encode "a\tb")))  ; Tab is always escaped
     (is (= "a|b" (prim/encode "a|b")))))
 
+
 ;; ============================================================================
 ;; Error Handling Tests
 ;; ============================================================================
@@ -113,11 +127,12 @@
 (deftest non-primitive-error-test
   (testing "Non-primitive values throw error"
     (is (thrown? #?(:clj Exception :cljs js/Error)
-                 (prim/encode [])))
+          (prim/encode [])))
     (is (thrown? #?(:clj Exception :cljs js/Error)
-                 (prim/encode {})))
+          (prim/encode {})))
     (is (thrown? #?(:clj Exception :cljs js/Error)
-                 (prim/encode :keyword)))))
+          (prim/encode :keyword)))))
+
 
 ;; ============================================================================
 ;; Comprehensive Mixed Tests

@@ -13,9 +13,13 @@
 ;; LineWriter deftype
 ;; ============================================================================
 
-(defrecord LineWriter [lines indent-string]
+(defrecord LineWriter
+  [lines indent-string]
+
   Object
-  (toString [_]
+
+  (toString
+    [_]
     ;; Join lines with newline, ensuring no trailing newline at end
     (if (empty? lines)
       ""
@@ -74,8 +78,11 @@
   (.toString writer))
 
 
-(defn line-count [^LineWriter writer]
+(defn line-count
+  [^LineWriter writer]
   (count (:lines writer)))
 
-(defn empty-writer? [^LineWriter writer]
+
+(defn empty-writer?
+  [^LineWriter writer]
   (empty? (:lines writer)))

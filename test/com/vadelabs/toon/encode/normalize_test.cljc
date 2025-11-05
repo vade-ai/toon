@@ -1,7 +1,9 @@
 (ns com.vadelabs.toon.encode.normalize-test
-  (:require #?(:clj [clojure.test :refer [deftest is testing]]
-               :cljs [cljs.test :refer [deftest is testing]])
-            [com.vadelabs.toon.encode.normalize :as norm]))
+  (:require
+    #?(:clj [clojure.test :refer [deftest is testing]]
+       :cljs [cljs.test :refer [deftest is testing]])
+    [com.vadelabs.toon.encode.normalize :as norm]))
+
 
 ;; ============================================================================
 ;; Primitive Normalization Tests
@@ -11,10 +13,12 @@
   (testing "nil remains nil"
     (is (nil? (norm/normalize-value nil)))))
 
+
 (deftest boolean-normalization-test
   (testing "Booleans remain unchanged"
     (is (= true (norm/normalize-value true)))
     (is (= false (norm/normalize-value false)))))
+
 
 (deftest string-normalization-test
   (testing "Strings remain unchanged"
@@ -23,6 +27,7 @@
     (is (= "hello world" (norm/normalize-value "hello world")))
     (is (= "🚀" (norm/normalize-value "🚀")))
     (is (= "café" (norm/normalize-value "café")))))
+
 
 (deftest number-normalization-test
   (testing "Finite numbers remain unchanged"
@@ -41,6 +46,7 @@
     (is (nil? (norm/normalize-value ##Inf)))
     (is (nil? (norm/normalize-value ##-Inf)))))
 
+
 ;; ============================================================================
 ;; Clojure-Specific Type Normalization Tests
 ;; ============================================================================
@@ -54,6 +60,7 @@
     (is (= "user/id" (norm/normalize-value :user/id)))
     (is (= "app/config" (norm/normalize-value :app/config)))))
 
+
 (deftest symbol-normalization-test
   (testing "Symbols normalize to strings"
     (is (= "foo" (norm/normalize-value 'foo)))
@@ -62,6 +69,7 @@
   (testing "Namespaced symbols preserve namespace"
     (is (= "clojure.core/map" (norm/normalize-value 'clojure.core/map)))))
 
+
 #?(:clj
    (deftest uuid-normalization-test
      (testing "UUIDs normalize to strings"
@@ -69,6 +77,7 @@
              normalized (norm/normalize-value uuid)]
          (is (string? normalized))
          (is (= (str uuid) normalized))))))
+
 
 #?(:clj
    (deftest date-normalization-test
@@ -84,6 +93,7 @@
          (is (.contains normalized "T"))
          (is (.contains normalized "Z"))))))
 
+
 ;; ============================================================================
 ;; Collection Normalization Tests
 ;; ============================================================================
@@ -96,6 +106,7 @@
   (testing "Empty sets normalize to empty vectors"
     (is (= [] (norm/normalize-value #{})))))
 
+
 (deftest vector-normalization-test
   (testing "Vectors with primitives"
     (is (= [1 2 3] (norm/normalize-value [1 2 3])))
@@ -107,10 +118,12 @@
   (testing "Nested vectors"
     (is (= [[1 2] [3 4]] (norm/normalize-value [[1 2] [3 4]])))))
 
+
 (deftest list-normalization-test
   (testing "Lists normalize to vectors"
     (is (= [1 2 3] (norm/normalize-value '(1 2 3))))
     (is (= ["a" "b"] (norm/normalize-value '("a" "b"))))))
+
 
 (deftest map-normalization-test
   (testing "Maps with string keys remain unchanged"
@@ -127,6 +140,7 @@
   (testing "Empty maps remain empty"
     (is (= {} (norm/normalize-value {})))))
 
+
 ;; ============================================================================
 ;; Unsupported Type Normalization Tests
 ;; ============================================================================
@@ -135,6 +149,7 @@
   (testing "Functions normalize to nil"
     (is (nil? (norm/normalize-value (fn [] 42))))
     (is (nil? (norm/normalize-value +)))))
+
 
 ;; ============================================================================
 ;; Type Guard Tests
@@ -154,6 +169,7 @@
     (is (not (norm/primitive? {})))
     (is (not (norm/primitive? :keyword)))))
 
+
 (deftest json-array-guard-test
   (testing "Vectors are JSON arrays"
     (is (norm/json-array? []))
@@ -166,6 +182,7 @@
     (is (not (norm/json-array? #{1 2 3})))
     (is (not (norm/json-array? "hello")))))
 
+
 (deftest json-object-guard-test
   (testing "Maps are JSON objects"
     (is (norm/json-object? {}))
@@ -175,6 +192,7 @@
     (is (not (norm/json-object? [])))
     (is (not (norm/json-object? "hello")))
     (is (not (norm/json-object? 42)))))
+
 
 (deftest array-of-primitives-guard-test
   (testing "Arrays of only primitives"
@@ -190,6 +208,7 @@
     (is (not (norm/array-of-primitives? [1 [2 3]])))
     (is (not (norm/array-of-primitives? {:a 1})))))
 
+
 (deftest array-of-objects-guard-test
   (testing "Arrays of only objects"
     (is (norm/array-of-objects? [{}]))
@@ -203,6 +222,7 @@
     (is (not (norm/array-of-objects? [[1 2]])))
     (is (not (norm/array-of-objects? [{"a" 1} 2])))))
 
+
 (deftest array-of-arrays-guard-test
   (testing "Arrays of only arrays"
     (is (norm/array-of-arrays? [[]]))
@@ -215,6 +235,7 @@
     (is (not (norm/array-of-arrays? [1 2 3])))
     (is (not (norm/array-of-arrays? [{}])))
     (is (not (norm/array-of-arrays? [[1 2] 3])))))
+
 
 ;; ============================================================================
 ;; Complex Normalization Tests
@@ -234,6 +255,7 @@
                                 "theme" "dark"}}
           result (norm/normalize-value input)]
       (is (= expected result)))))
+
 
 (deftest edge-case-normalization-test
   (testing "Mix of supported and unsupported types"

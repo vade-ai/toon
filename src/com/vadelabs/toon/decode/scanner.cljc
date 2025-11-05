@@ -11,14 +11,19 @@
 ;; Data Structures
 ;; ============================================================================
 
-(defn parsed-line [raw depth indent content line-number]
+(defn parsed-line
+  [raw depth indent content line-number]
   {:raw raw :depth depth :indent indent
    :content content :line-number line-number})
 
-(defn blank-line-info [line-number indent depth]
+
+(defn blank-line-info
+  [line-number indent depth]
   {:line-number line-number :indent indent :depth depth})
 
-(defn scan-result [lines blank-lines]
+
+(defn scan-result
+  [lines blank-lines]
   {:lines lines :blank-lines blank-lines})
 
 
@@ -132,27 +137,36 @@
 ;; LineCursor - Iterator for line navigation
 ;; ============================================================================
 
-(defrecord LineCursor [lines blank-lines position]
+(defrecord LineCursor
+  [lines blank-lines position]
+
   Object
-  (toString [_]
+
+  (toString
+    [_]
     (str "LineCursor{position: " position ", total: " (count lines) "}")))
 
 
-(defn create-cursor [lines blank-lines]
+(defn create-cursor
+  [lines blank-lines]
   (->LineCursor lines blank-lines 0))
 
-(defn cursor-from-scan-result [{:keys [lines blank-lines]}]
+
+(defn cursor-from-scan-result
+  [{:keys [lines blank-lines]}]
   (create-cursor lines blank-lines))
 
 
-(defn peek-cursor [^LineCursor cursor]
+(defn peek-cursor
+  [^LineCursor cursor]
   (let [pos (:position cursor)
         lines (:lines cursor)]
     (when (< pos (count lines))
       (nth lines pos))))
 
 
-(defn next-cursor [^LineCursor cursor]
+(defn next-cursor
+  [^LineCursor cursor]
   (let [line (peek-cursor cursor)]
     (if line
       [line (->LineCursor (:lines cursor)
@@ -169,21 +183,25 @@
                  (+ (:position cursor) n))))
 
 
-(defn at-end? [^LineCursor cursor]
+(defn at-end?
+  [^LineCursor cursor]
   (>= (:position cursor) (count (:lines cursor))))
 
 
-(defn peek-at-depth [^LineCursor cursor target-depth]
+(defn peek-at-depth
+  [^LineCursor cursor target-depth]
   (let [line (peek-cursor cursor)]
     (when (and line (= (:depth line) target-depth))
       line)))
 
 
-(defn has-more-at-depth? [^LineCursor cursor target-depth]
+(defn has-more-at-depth?
+  [^LineCursor cursor target-depth]
   (boolean (peek-at-depth cursor target-depth)))
 
 
-(defn get-blank-lines-in-range [^LineCursor cursor start-line end-line]
+(defn get-blank-lines-in-range
+  [^LineCursor cursor start-line end-line]
   (let [blank-lines (:blank-lines cursor)]
     (filterv #(and (>= (:line-number %) start-line)
                    (<= (:line-number %) end-line))

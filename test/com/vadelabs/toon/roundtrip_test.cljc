@@ -1,12 +1,12 @@
 (ns com.vadelabs.toon.roundtrip-test
   "Property-based roundtrip tests for TOON encoding/decoding."
   (:require
-   #?(:clj [clojure.test :refer [deftest is testing]]
-      :cljs [cljs.test :refer [deftest is testing]])
-   [clojure.test.check.generators :as gen]
-   [clojure.test.check.properties :as prop]
-   [clojure.test.check.clojure-test :refer [defspec]]
-   [com.vadelabs.toon.interface :as toon]))
+    #?(:clj [clojure.test :refer [deftest is testing]]
+       :cljs [cljs.test :refer [deftest is testing]])
+    [clojure.test.check.clojure-test :refer [defspec]]
+    [clojure.test.check.generators :as gen]
+    [clojure.test.check.properties :as prop]
+    [com.vadelabs.toon.interface :as toon]))
 
 
 ;; ============================================================================
@@ -54,6 +54,7 @@
   "Generator for non-empty strings"
   (gen/such-that #(not (empty? %)) gen/string-alphanumeric 100))
 
+
 (def gen-json-primitive
   "Generator for JSON primitive values"
   (gen/one-of [gen/string-alphanumeric
@@ -61,17 +62,21 @@
                gen/boolean
                (gen/return nil)]))
 
+
 (def gen-simple-map
   "Generator for simple string-keyed maps with primitive values"
   (gen/map gen-non-empty-string gen-json-primitive {:min-elements 1 :max-elements 5}))
+
 
 (def gen-string-vector
   "Generator for non-empty vectors of strings"
   (gen/vector gen-non-empty-string 1 10))
 
+
 (def gen-int-vector
   "Generator for non-empty vectors of integers"
   (gen/vector gen/int 1 10))
+
 
 (def gen-bool-vector
   "Generator for non-empty vectors of booleans"
@@ -84,19 +89,22 @@
 
 (defspec primitive-string-roundtrip 20
   (prop/for-all [s gen/string-alphanumeric]
-    (= s (roundtrip s))))
+                (= s (roundtrip s))))
+
 
 (defspec primitive-boolean-roundtrip 10
   (prop/for-all [b gen/boolean]
-    (= b (roundtrip b))))
+                (= b (roundtrip b))))
+
 
 (deftest primitive-nil-roundtrip
   (testing "nil roundtrips correctly"
     (is (= nil (roundtrip nil)))))
 
+
 (defspec primitive-number-roundtrip 20
   (prop/for-all [n gen/int]
-    (= (double n) (roundtrip n))))
+                (= (double n) (roundtrip n))))
 
 
 ;; ============================================================================
@@ -105,17 +113,20 @@
 
 (defspec array-string-roundtrip 20
   (prop/for-all [arr (gen/vector gen-non-empty-string 1 10)]
-    (= arr (roundtrip arr))))
+                (= arr (roundtrip arr))))
+
 
 (defspec array-number-roundtrip 20
   (prop/for-all [arr (gen/vector gen/int 1 10)]
-    (let [expected (mapv double arr)
-          actual (roundtrip arr)]
-      (= expected actual))))
+                (let [expected (mapv double arr)
+                      actual (roundtrip arr)]
+                  (= expected actual))))
+
 
 (defspec array-boolean-roundtrip 10
   (prop/for-all [arr (gen/vector gen/boolean 1 5)]
-    (= arr (roundtrip arr))))
+                (= arr (roundtrip arr))))
+
 
 (deftest array-empty-roundtrip
   (testing "Empty arrays roundtrip correctly"
@@ -129,16 +140,17 @@
 (defspec object-simple-roundtrip 20
   (prop/for-all [obj (gen/map gen-non-empty-string gen-non-empty-string
                               {:min-elements 1 :max-elements 5})]
-    (= obj (roundtrip obj))))
+                (= obj (roundtrip obj))))
+
 
 (defspec object-mixed-values-roundtrip 20
   (prop/for-all [name gen-non-empty-string
                  age gen/int
                  active gen/boolean]
-    (let [obj {"name" name "age" age "active" active}
-          expected (normalize-for-comparison obj)
-          actual (roundtrip obj)]
-      (= expected actual))))
+                (let [obj {"name" name "age" age "active" active}
+                      expected (normalize-for-comparison obj)
+                      actual (roundtrip obj)]
+                  (= expected actual))))
 
 
 ;; ============================================================================
@@ -148,27 +160,29 @@
 (defspec nested-object-roundtrip 20
   (prop/for-all [name gen-non-empty-string
                  age gen/int]
-    (let [obj {"user" {"name" name "age" age}}
-          expected (normalize-for-comparison obj)
-          actual (roundtrip obj)]
-      (= expected actual))))
+                (let [obj {"user" {"name" name "age" age}}
+                      expected (normalize-for-comparison obj)
+                      actual (roundtrip obj)]
+                  (= expected actual))))
+
 
 (defspec object-with-array-roundtrip 20
   (prop/for-all [name gen-non-empty-string
                  tags gen-string-vector]
-    (let [obj {"name" name "tags" tags}
-          expected (normalize-for-comparison obj)
-          actual (roundtrip obj)]
-      (= expected actual))))
+                (let [obj {"name" name "tags" tags}
+                      expected (normalize-for-comparison obj)
+                      actual (roundtrip obj)]
+                  (= expected actual))))
+
 
 (defspec array-of-objects-roundtrip 20
   (prop/for-all [objects (gen/vector
-                          (gen/fmap (fn [[id name]] {"id" id "name" name})
-                                    (gen/tuple gen/int gen-non-empty-string))
-                          1 5)]
-    (let [expected (normalize-for-comparison objects)
-          actual (roundtrip objects)]
-      (= expected actual))))
+                           (gen/fmap (fn [[id name]] {"id" id "name" name})
+                                     (gen/tuple gen/int gen-non-empty-string))
+                           1 5)]
+                (let [expected (normalize-for-comparison objects)
+                      actual (roundtrip objects)]
+                  (= expected actual))))
 
 
 ;; ============================================================================
@@ -210,11 +224,12 @@
                (gen/return nil)
                gen-simple-map]))
 
+
 (defspec complex-json-roundtrip 30
   (prop/for-all [value gen-complex-value]
-    (let [expected (normalize-for-comparison value)
-          actual (roundtrip value)]
-      (= expected actual))))
+                (let [expected (normalize-for-comparison value)
+                      actual (roundtrip value)]
+                  (= expected actual))))
 
 
 ;; ============================================================================
@@ -241,6 +256,7 @@
                (gen/return "{object}")
                (gen/return "- item")]))
 
+
 (def gen-unicode-string
   "Generator for unicode and emoji strings"
   (gen/one-of [(gen/return "café")
@@ -249,10 +265,12 @@
                (gen/return "héllo wörld")
                (gen/return "テスト")]))
 
+
 (def gen-safe-key
   "Generator for safe object keys"
   (gen/one-of [gen-non-empty-string
                (gen/fmap #(str "key" %) gen/nat)]))
+
 
 (def gen-nested-array
   "Generator for arrays of arrays"
@@ -267,16 +285,17 @@
   (prop/for-all [name gen-non-empty-string
                  age gen/int
                  city gen-non-empty-string]
-    (let [obj {"level1" {"level2" {"level3" {"name" name "age" age "city" city}}}}
-          expected (normalize-for-comparison obj)
-          actual (roundtrip obj)]
-      (= expected actual))))
+                (let [obj {"level1" {"level2" {"level3" {"name" name "age" age "city" city}}}}
+                      expected (normalize-for-comparison obj)
+                      actual (roundtrip obj)]
+                  (= expected actual))))
+
 
 (defspec nested-arrays-roundtrip 50
   (prop/for-all [arr gen-nested-array]
-    (let [expected (mapv #(mapv double %) arr)
-          actual (roundtrip arr)]
-      (= expected actual))))
+                (let [expected (mapv #(mapv double %) arr)
+                      actual (roundtrip arr)]
+                  (= expected actual))))
 
 
 ;; ============================================================================
@@ -285,18 +304,20 @@
 
 (defspec special-strings-roundtrip 50
   (prop/for-all [s gen-special-string]
-    (= s (roundtrip s))))
+                (= s (roundtrip s))))
+
 
 (defspec unicode-strings-roundtrip 50
   (prop/for-all [s gen-unicode-string]
-    (= s (roundtrip s))))
+                (= s (roundtrip s))))
+
 
 (defspec strings-with-whitespace-roundtrip 50
   (prop/for-all [ws1 (gen/elements [" " "  " "\t"])
                  content gen-non-empty-string
                  ws2 (gen/elements [" " "  " "\t"])]
-    (let [s (str ws1 content ws2)]
-      (= s (roundtrip s)))))
+                (let [s (str ws1 content ws2)]
+                  (= s (roundtrip s)))))
 
 
 ;; ============================================================================
@@ -305,17 +326,18 @@
 
 (defspec roundtrip-with-tab-delimiter 50
   (prop/for-all [obj gen-simple-map]
-    (let [encoded (toon/encode obj {:delimiter "\t"})
-          decoded (toon/decode encoded)
-          expected (normalize-for-comparison obj)]
-      (= expected decoded))))
+                (let [encoded (toon/encode obj {:delimiter "\t"})
+                      decoded (toon/decode encoded)
+                      expected (normalize-for-comparison obj)]
+                  (= expected decoded))))
+
 
 (defspec roundtrip-with-pipe-delimiter 50
   (prop/for-all [obj gen-simple-map]
-    (let [encoded (toon/encode obj {:delimiter "|"})
-          decoded (toon/decode encoded)
-          expected (normalize-for-comparison obj)]
-      (= expected decoded))))
+                (let [encoded (toon/encode obj {:delimiter "|"})
+                      decoded (toon/decode encoded)
+                      expected (normalize-for-comparison obj)]
+                  (= expected decoded))))
 
 
 ;; ============================================================================
@@ -324,19 +346,20 @@
 
 (defspec roundtrip-with-length-marker 50
   (prop/for-all [arr gen-int-vector]
-    (let [encoded (toon/encode arr {:length-marker "#"})
-          decoded (toon/decode encoded)
-          expected (mapv double arr)]
-      (= expected decoded))))
+                (let [encoded (toon/encode arr {:length-marker "#"})
+                      decoded (toon/decode encoded)
+                      expected (mapv double arr)]
+                  (= expected decoded))))
+
 
 (defspec object-with-array-and-length-marker 50
   (prop/for-all [name gen-non-empty-string
                  tags gen-string-vector]
-    (let [obj {"name" name "tags" tags}
-          encoded (toon/encode obj {:length-marker "#"})
-          decoded (toon/decode encoded)
-          expected (normalize-for-comparison obj)]
-      (= expected decoded))))
+                (let [obj {"name" name "tags" tags}
+                      encoded (toon/encode obj {:length-marker "#"})
+                      decoded (toon/decode encoded)
+                      expected (normalize-for-comparison obj)]
+                  (= expected decoded))))
 
 
 ;; ============================================================================
@@ -346,25 +369,27 @@
 (defspec large-object-roundtrip 30
   (prop/for-all [obj (gen/map gen-safe-key gen-json-primitive
                               {:min-elements 10 :max-elements 50})]
-    (let [expected (normalize-for-comparison obj)
-          actual (roundtrip obj)]
-      (= expected actual))))
+                (let [expected (normalize-for-comparison obj)
+                      actual (roundtrip obj)]
+                  (= expected actual))))
+
 
 (defspec large-array-roundtrip 30
   (prop/for-all [arr (gen/vector gen/int 50 200)]
-    (let [expected (mapv double arr)
-          actual (roundtrip arr)]
-      (= expected actual))))
+                (let [expected (mapv double arr)
+                      actual (roundtrip arr)]
+                  (= expected actual))))
+
 
 (defspec large-array-of-objects-roundtrip 30
   (prop/for-all [objects (gen/vector
-                          (gen/fmap (fn [[id name]]
-                                      {"id" id "name" name})
-                                    (gen/tuple gen/int gen-non-empty-string))
-                          10 50)]
-    (let [expected (normalize-for-comparison objects)
-          actual (roundtrip objects)]
-      (= expected actual))))
+                           (gen/fmap (fn [[id name]]
+                                       {"id" id "name" name})
+                                     (gen/tuple gen/int gen-non-empty-string))
+                           10 50)]
+                (let [expected (normalize-for-comparison objects)
+                      actual (roundtrip objects)]
+                  (= expected actual))))
 
 
 ;; ============================================================================
@@ -373,19 +398,20 @@
 
 (defspec keys-with-special-chars-roundtrip 50
   (prop/for-all [value gen-non-empty-string]
-    (let [obj {"user name" value
-               "key:value" value
-               "123" value
-               "$special" value}
-          expected (normalize-for-comparison obj)
-          actual (roundtrip obj)]
-      (= expected actual))))
+                (let [obj {"user name" value
+                           "key:value" value
+                           "123" value
+                           "$special" value}
+                      expected (normalize-for-comparison obj)
+                      actual (roundtrip obj)]
+                  (= expected actual))))
+
 
 (defspec namespaced-keys-roundtrip 50
   (prop/for-all [value gen-non-empty-string]
-    (let [obj {"user/name" value
-               "app.config/port" value
-               "ns.core/value" value}
-          expected (normalize-for-comparison obj)
-          actual (roundtrip obj)]
-      (= expected actual))))
+                (let [obj {"user/name" value
+                           "app.config/port" value
+                           "ns.core/value" value}
+                      expected (normalize-for-comparison obj)
+                      actual (roundtrip obj)]
+                  (= expected actual))))
