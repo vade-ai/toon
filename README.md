@@ -1,22 +1,59 @@
 # TOON: Token-Oriented Object Notation
 
 [![Clojars Project](https://img.shields.io/clojars/v/com.vadelabs/toon.svg)](https://clojars.org/com.vadelabs/toon)
+[![SPEC v1.3](https://img.shields.io/badge/spec-v1.3-lightgray)](https://github.com/toon-format/spec)
 [![License: EPL-1.0](https://img.shields.io/badge/License-EPL%201.0-red.svg)](https://www.eclipse.org/legal/epl-v10.html)
 
-A compact, human-readable data format optimized for LLMs, reducing token usage by **30-60% compared to JSON** while maintaining readability.
+A Clojure/ClojureScript implementation of **Token-Oriented Object Notation** – a compact, human-readable serialization format designed for passing structured data to Large Language Models with significantly reduced token usage.
+
+TOON achieves **49% fewer tokens than formatted JSON** (28% vs compact JSON) while maintaining explicit structure that helps LLMs parse and validate data reliably. It's intended for *LLM input* as a lossless, drop-in representation of JSON data.
+
+> **Specification:** This library implements [TOON v1.3](https://github.com/toon-format/spec) specification
+> **Reference Implementation:** [TypeScript/JavaScript](https://github.com/toon-format/toon)
 
 ## Why TOON?
 
-When working with Large Language Models, token efficiency directly impacts:
-- **Cost**: Fewer tokens = lower API costs
-- **Context**: More data in the same context window
-- **Speed**: Faster processing with less data to parse
+When working with Large Language Models, token efficiency directly impacts cost, context window usage, and processing speed. **LLM tokens still cost money** – and standard JSON is verbose and token-expensive.
 
-TOON achieves significant token reduction through:
-- **No redundant delimiters**: Uses indentation instead of `{}` and `[]`
-- **Minimal punctuation**: Eliminates quotes where possible
-- **Compact arrays**: Inline values for primitives, tabular format for objects
-- **Type inference**: Numbers, booleans, and null don't need quotes
+TOON's sweet spot is **uniform arrays of objects** – multiple fields per row, same structure across items. It borrows YAML's indentation-based structure for nested objects and CSV's tabular format for uniform data rows, then optimizes both for token efficiency in LLM contexts.
+
+### Token Efficiency
+
+Based on benchmarks using the GPT-5 `o200k_base` tokenizer:
+
+- **49.1%** reduction vs formatted JSON (2-space indentation)
+- **28.0%** reduction vs compact JSON (minified)
+- **39.4%** reduction vs YAML
+- **56.0%** reduction vs XML
+
+Real-world examples:
+- **GitHub repositories** (100 items): 42.3% fewer tokens than JSON
+- **Daily analytics** (180 days): 58.9% fewer tokens than JSON
+- **E-commerce orders**: 35.4% fewer tokens than JSON
+
+### Key Features
+
+- 💸 **Token-efficient:** Eliminates redundant punctuation and repeated keys
+- 🤿 **LLM-friendly guardrails:** Explicit lengths and fields enable validation
+- 🍱 **Minimal syntax:** Removes braces, brackets, and most quotes
+- 📐 **Indentation-based:** Uses whitespace like YAML instead of braces
+- 🧺 **Tabular arrays:** Declare keys once, stream data as rows
+
+### When to Use TOON
+
+**TOON excels at:**
+- Uniform arrays of objects (same fields, primitive values)
+- Large datasets with consistent structure
+- Tabular data with multiple rows
+
+**JSON is better for:**
+- Non-uniform data with varying field sets
+- Deeply nested structures
+- Mixed-type collections
+
+**CSV is more compact for:**
+- Flat, uniform tables without any nesting
+- Data without nested objects or arrays
 
 ## Installation
 
@@ -50,7 +87,7 @@ com.vadelabs/toon {:mvn/version "2025.11.05.8"}
 
 ### Objects
 
-**JSON** (50 tokens):
+**JSON:**
 ```json
 {
   "name": "Alice",
@@ -59,7 +96,7 @@ com.vadelabs/toon {:mvn/version "2025.11.05.8"}
 }
 ```
 
-**TOON** (18 tokens):
+**TOON:**
 ```
 name: Alice
 age: 30
@@ -68,7 +105,7 @@ active: true
 
 ### Nested Objects
 
-**JSON** (80 tokens):
+**JSON:**
 ```json
 {
   "user": {
@@ -78,49 +115,55 @@ active: true
 }
 ```
 
-**TOON** (30 tokens):
+**TOON:**
 ```
 user:
   name: Alice
   email: alice@example.com
 ```
 
-### Arrays of Primitives
+### Arrays of Primitives (Inline)
 
-**JSON** (40 tokens):
+**JSON:**
 ```json
 {
   "tags": ["reading", "gaming", "coding"]
 }
 ```
 
-**TOON** (15 tokens):
+**TOON:**
 ```
 tags[3]: reading,gaming,coding
 ```
 
 ### Arrays of Objects (Tabular Format)
 
-**JSON** (120 tokens):
+This is TOON's sweet spot – uniform arrays of objects with consistent fields:
+
+**JSON:**
 ```json
-[
-  {"id": 1, "name": "Alice", "score": 95},
-  {"id": 2, "name": "Bob", "score": 87},
-  {"id": 3, "name": "Carol", "score": 92}
-]
+{
+  "users": [
+    {"id": 1, "name": "Alice", "role": "admin"},
+    {"id": 2, "name": "Bob", "role": "user"}
+  ]
+}
 ```
 
-**TOON** (45 tokens):
+**TOON:**
 ```
-[3]{id,name,score}:
-  1,Alice,95
-  2,Bob,87
-  3,Carol,92
+users[2]{id,name,role}:
+  1,Alice,admin
+  2,Bob,user
 ```
+
+The tabular format eliminates repeated keys, providing significant token savings for large datasets.
 
 ### Arrays of Mixed Items (List Format)
 
-**TOON**:
+For non-uniform data, TOON uses list format:
+
+**TOON:**
 ```
 items[3]:
   - name: Laptop
@@ -331,13 +374,61 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 5. Commit with clear messages: `git commit -m "add feature X"`
 6. Push and create a pull request
 
+## Specification
+
+This implementation follows the [TOON v1.3 specification](https://github.com/toon-format/spec/blob/main/SPEC.md) (2025-10-31).
+
+For detailed format rules, edge cases, and conformance requirements, see:
+- **[Full Specification](https://github.com/toon-format/spec/blob/main/SPEC.md)** - Complete technical specification
+- **[Conformance Tests](https://github.com/toon-format/spec/tree/main/tests)** - Language-agnostic test fixtures
+- **[Examples](https://github.com/toon-format/spec/tree/main/examples)** - Example TOON files
+- **[Changelog](https://github.com/toon-format/spec/blob/main/CHANGELOG.md)** - Spec version history
+
+## Benchmarks
+
+Detailed benchmarks comparing TOON against JSON, YAML, XML, and CSV across multiple datasets and LLM models are available in the [reference implementation repository](https://github.com/toon-format/toon/tree/main/benchmarks).
+
+Key findings:
+- **Token efficiency:** 49% fewer tokens than formatted JSON on average
+- **Retrieval accuracy:** 70.1% (TOON) vs 65.4% (JSON) across 4 LLMs
+- **Best case:** 58.9% reduction for uniform tabular data (daily analytics)
+
+Token counts are measured using the GPT-5 `o200k_base` tokenizer. Actual savings vary by model and tokenizer.
+
+## Other Implementations
+
+### Official Implementations
+
+- **TypeScript/JavaScript:** [toon-format/toon](https://github.com/toon-format/toon) (reference implementation)
+- **Python:** [toon-format/toon-python](https://github.com/toon-format/toon-python) *(in development)*
+- **Rust:** [toon-format/toon-rust](https://github.com/toon-format/toon-rust) *(in development)*
+
+### Community Implementations
+
+- **.NET:** [ToonSharp](https://github.com/0xZunia/ToonSharp)
+- **C++:** [ctoon](https://github.com/mohammadraziei/ctoon)
+- **Crystal:** [toon-crystal](https://github.com/mamantoha/toon-crystal)
+- **Dart:** [toon](https://github.com/wisamidris77/toon)
+- **Elixir:** [toon_ex](https://github.com/kentaro/toon_ex)
+- **Gleam:** [toon_codec](https://github.com/axelbellec/toon_codec)
+- **Go:** [gotoon](https://github.com/alpkeskin/gotoon)
+- **Java:** [JToon](https://github.com/felipestanzani/JToon)
+- **Lua/Neovim:** [toon.nvim](https://github.com/thalesgelinger/toon.nvim)
+- **OCaml:** [ocaml-toon](https://github.com/davesnx/ocaml-toon)
+- **PHP:** [toon-php](https://github.com/HelgeSverre/toon-php)
+- **Python:** [python-toon](https://github.com/xaviviro/python-toon)
+- **Ruby:** [toon-ruby](https://github.com/andrepcg/toon-ruby)
+- **Swift:** [TOONEncoder](https://github.com/mattt/TOONEncoder)
+
+> **Note:** When implementing TOON in other languages, follow the [specification](https://github.com/toon-format/spec/blob/main/SPEC.md) to ensure compatibility. The [conformance tests](https://github.com/toon-format/spec/tree/main/tests) provide language-agnostic validation.
+
 ## Roadmap
 
-- [ ] ClojureScript browser support
+- [ ] Conformance test suite integration
+- [ ] Performance benchmarks vs JSON for Clojure
+- [ ] ClojureScript browser optimization
 - [ ] Streaming encoder/decoder
 - [ ] Custom type handlers
-- [ ] Performance benchmarks vs JSON
-- [ ] Language interop (Java, JavaScript)
 
 ## License
 

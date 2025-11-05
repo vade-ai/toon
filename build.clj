@@ -23,7 +23,7 @@
 (def class-dir "target/classes")
 
 (defn- pom-template [version]
-  [[:description "TOON (Token-Oriented Object Notation) - A compact data format optimized for LLMs, reducing token usage by 30-60% compared to JSON while maintaining readability"]
+  [[:description "Clojure/ClojureScript implementation of TOON v1.3 (Token-Oriented Object Notation) - A compact data format optimized for LLMs, achieving 49% fewer tokens than formatted JSON while maintaining readability and structure"]
    [:url "https://github.com/vadelabs/toon"]
    [:licenses
     [:license
