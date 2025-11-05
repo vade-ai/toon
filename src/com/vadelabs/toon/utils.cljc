@@ -141,76 +141,48 @@
   ([s]
    (unescaped s true))
   ([s strict]
-   #?(:clj
-      (let [sb (StringBuilder.)]
-        (loop [pos 0]
-          (if (>= pos (count s))
-            (.toString sb)
-            (let [ch (nth s pos)]
-              (if (= ch \\)
-                (if (>= (inc pos) (count s))
-                  (if strict
-                    (throw (ex-info "Invalid escape sequence: trailing backslash"
-                                    {:type :invalid-escape
-                                     :position pos}))
-                    (do
-                      (.append sb ch)
-                      (recur (inc pos))))
-                  (let [next-ch (nth s (inc pos))]
-                    (case next-ch
-                      \\ (do (.append sb "\\") (recur (+ pos 2)))
-                      \" (do (.append sb "\"") (recur (+ pos 2)))
-                      \n (do (.append sb "\n") (recur (+ pos 2)))
-                      \r (do (.append sb "\r") (recur (+ pos 2)))
-                      \t (do (.append sb "\t") (recur (+ pos 2)))
-                      ;; Invalid escape
-                      (if strict
-                        (throw (ex-info (str "Invalid escape sequence: \\" next-ch)
-                                        {:type :invalid-escape
-                                         :sequence (str "\\" next-ch)
-                                         :position pos}))
-                        (do
-                          (.append sb ch)
-                          (.append sb next-ch)
-                          (recur (+ pos 2)))))))
-                (do
-                  (.append sb ch)
-                  (recur (inc pos))))))))
-      :cljs
-      (let [parts (array)]
-        (loop [pos 0]
-          (if (>= pos (count s))
-            (.join parts "")
-            (let [ch (nth s pos)]
-              (if (= ch \\)
-                (if (>= (inc pos) (count s))
-                  (if strict
-                    (throw (ex-info "Invalid escape sequence: trailing backslash"
-                                    {:type :invalid-escape
-                                     :position pos}))
-                    (do
-                      (.push parts ch)
-                      (recur (inc pos))))
-                  (let [next-ch (nth s (inc pos))]
-                    (case next-ch
-                      \\ (do (.push parts "\\") (recur (+ pos 2)))
-                      \" (do (.push parts "\"") (recur (+ pos 2)))
-                      \n (do (.push parts "\n") (recur (+ pos 2)))
-                      \r (do (.push parts "\r") (recur (+ pos 2)))
-                      \t (do (.push parts "\t") (recur (+ pos 2)))
-                      ;; Invalid escape
-                      (if strict
-                        (throw (ex-info (str "Invalid escape sequence: \\" next-ch)
-                                        {:type :invalid-escape
-                                         :sequence (str "\\" next-ch)
-                                         :position pos}))
-                        (do
-                          (.push parts ch)
-                          (.push parts next-ch)
-                          (recur (+ pos 2)))))))
-                (do
-                  (.push parts ch)
-                  (recur (inc pos)))))))))))
+   (let [builder #?(:clj (StringBuilder.)
+                    :cljs (array))
+         append! #?(:clj (fn [sb text] (.append sb text))
+                    :cljs (fn [arr text] (.push arr text)))]
+     (loop [pos 0]
+       (if (>= pos (count s))
+         #?(:clj (.toString builder)
+            :cljs (.join builder ""))
+         (let [ch (nth s pos)]
+           (if (= ch \\)
+             ;; Handle escape sequence
+             (if (>= (inc pos) (count s))
+               ;; Trailing backslash
+               (if strict
+                 (throw (ex-info "Invalid escape sequence: trailing backslash"
+                                 {:type :invalid-escape
+                                  :position pos}))
+                 (do
+                   (append! builder ch)
+                   (recur (inc pos))))
+               ;; Process escape character
+               (let [next-ch (nth s (inc pos))]
+                 (case next-ch
+                   \\ (do (append! builder "\\") (recur (+ pos 2)))
+                   \" (do (append! builder "\"") (recur (+ pos 2)))
+                   \n (do (append! builder "\n") (recur (+ pos 2)))
+                   \r (do (append! builder "\r") (recur (+ pos 2)))
+                   \t (do (append! builder "\t") (recur (+ pos 2)))
+                   ;; Invalid escape
+                   (if strict
+                     (throw (ex-info (str "Invalid escape sequence: \\" next-ch)
+                                     {:type :invalid-escape
+                                      :sequence (str "\\" next-ch)
+                                      :position pos}))
+                     (do
+                       (append! builder ch)
+                       (append! builder next-ch)
+                       (recur (+ pos 2)))))))
+             ;; Regular character
+             (do
+               (append! builder ch)
+               (recur (inc pos))))))))))
 
 
 ;; ============================================================================
