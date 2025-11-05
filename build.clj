@@ -27,8 +27,8 @@
    [:url "https://github.com/vadelabs/toon"]
    [:licenses
     [:license
-     [:name "Eclipse Public License"]
-     [:url "http://www.eclipse.org/legal/epl-v10.html"]]]
+     [:name "MIT License"]
+     [:url "https://opensource.org/licenses/MIT"]]]
    [:developers
     [:developer
      [:name "Pragyan"]

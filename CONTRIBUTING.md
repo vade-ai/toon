@@ -332,4 +332,4 @@ Update documentation when you:
 
 ## License
 
-By contributing to TOON, you agree that your contributions will be licensed under the Eclipse Public License 1.0.
+By contributing to TOON, you agree that your contributions will be licensed under the MIT License.

@@ -2,7 +2,7 @@
 
 [![Clojars Project](https://img.shields.io/clojars/v/com.vadelabs/toon.svg)](https://clojars.org/com.vadelabs/toon)
 [![SPEC v1.3](https://img.shields.io/badge/spec-v1.3-lightgray)](https://github.com/toon-format/spec)
-[![License: EPL-1.0](https://img.shields.io/badge/License-EPL%201.0-red.svg)](https://www.eclipse.org/legal/epl-v10.html)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A Clojure/ClojureScript implementation of **Token-Oriented Object Notation** – a compact, human-readable serialization format designed for passing structured data to Large Language Models with significantly reduced token usage.
 
@@ -434,7 +434,7 @@ Token counts are measured using the GPT-5 `o200k_base` tokenizer. Actual savings
 
 Copyright © 2025 Pragyan
 
-Distributed under the Eclipse Public License version 1.0.
+Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## Links
 
