@@ -55,7 +55,7 @@
     Updated LineWriter"
   [k depth writer]
   (let [quoted-key (quote/maybe-quote-key k)]
-    (writer/push writer depth (str quoted-key "[0]"))))
+    (writer/push writer depth (str quoted-key const/empty-array-with-length))))
 
 
 (defn- primitive-array-pair

@@ -2,6 +2,7 @@
   "Object (map) decoding for TOON format."
   (:require
     [clojure.string :as str]
+    [com.vadelabs.toon.constants :as const]
     [com.vadelabs.toon.decode.arrays :as arrays]
     [com.vadelabs.toon.decode.parser :as parser]
     [com.vadelabs.toon.decode.scanner :as scanner]
@@ -116,8 +117,7 @@
   [line cursor depth delimiter strict list-item-fn]
   (let [content (:content line)
         ;; Remove list marker prefix
-        const-list-item-prefix "- "
-        after-marker (subs content (count const-list-item-prefix))
+        after-marker (subs content (count const/list-item-prefix))
         ;; Find colon to split key:value
         colon-pos (str-utils/unquoted-char after-marker \:)]
     (when-not colon-pos

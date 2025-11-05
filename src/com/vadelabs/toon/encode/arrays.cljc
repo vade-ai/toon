@@ -372,7 +372,7 @@
   (cond
     ;; Empty array
     (empty? arr)
-    (let [empty-str (if (zero? depth) "[0]" "[]")]
+    (let [empty-str (if (zero? depth) const/empty-array-with-length const/empty-array)]
       (writer/push writer depth empty-str))
 
     ;; Array of primitives

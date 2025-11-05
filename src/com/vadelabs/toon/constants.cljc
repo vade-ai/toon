@@ -44,6 +44,11 @@
 (def default-delimiter (:comma delimiters))
 
 
+;; Array literals
+(def empty-array "[]")
+(def empty-array-with-length "[0]")
+
+
 ;; Default options
 (def default-indent 2)
 (def default-length-marker false)
