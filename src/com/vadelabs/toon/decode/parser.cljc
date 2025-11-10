@@ -63,11 +63,16 @@
     - s: String to parse
 
   Returns:
-    Number (double) or nil if not a valid number"
+    Number (double) or nil if not a valid number
+
+  Note:
+    Normalizes negative zero to positive zero per TOON v1.4 spec"
   [s]
   (when (re-matches numeric-pattern s)
-    #?(:clj (Double/parseDouble s)
-       :cljs (js/parseFloat s))))
+    (let [parsed #?(:clj (Double/parseDouble s)
+                    :cljs (js/parseFloat s))]
+      ;; Normalize negative zero to positive zero (v1.4 requirement)
+      (if (zero? parsed) 0.0 parsed))))
 
 
 (defn primitive-token

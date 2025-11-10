@@ -4,9 +4,9 @@ The TOON specification is maintained in a dedicated repository: [github.com/toon
 
 ## Current Version
 
-**Version 1.3** (2025-10-31)
+**Version 1.4** (2025-11-05)
 
-This Clojure/ClojureScript implementation conforms to TOON v1.3 specification.
+This Clojure/ClojureScript implementation conforms to TOON v1.4 specification.
 
 ## Quick Links
 

@@ -2,14 +2,14 @@
 
 [![Clojars Project](https://img.shields.io/clojars/v/com.vadelabs/toon.svg)](https://clojars.org/com.vadelabs/toon)
 [![CI](https://github.com/vadelabs/toon/actions/workflows/ci.yml/badge.svg)](https://github.com/vadelabs/toon/actions/workflows/ci.yml)
-[![SPEC v1.3](https://img.shields.io/badge/spec-v1.3-lightgray)](https://github.com/toon-format/spec)
+[![SPEC v1.4](https://img.shields.io/badge/spec-v1.4-lightgray)](https://github.com/toon-format/spec)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A Clojure/ClojureScript implementation of **Token-Oriented Object Notation** – a compact, human-readable serialization format designed for passing structured data to Large Language Models with significantly reduced token usage.
 
 TOON achieves **49% fewer tokens than formatted JSON** (28% vs compact JSON) while maintaining explicit structure that helps LLMs parse and validate data reliably. It's intended for *LLM input* as a lossless, drop-in representation of JSON data.
 
-> **Specification:** This library implements [TOON v1.3](https://github.com/toon-format/spec) specification
+> **Specification:** This library implements [TOON v1.4](https://github.com/toon-format/spec) specification
 > **Reference Implementation:** [TypeScript/JavaScript](https://github.com/toon-format/toon)
 
 ## Why TOON?
@@ -388,7 +388,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 
 ## Specification
 
-This implementation follows the [TOON v1.3 specification](https://github.com/toon-format/spec/blob/main/SPEC.md) (2025-10-31).
+This implementation follows the [TOON v1.4 specification](https://github.com/toon-format/spec/blob/main/SPEC.md) (2025-11-05).
 
 For detailed format rules, edge cases, and conformance requirements, see:
 - **[Full Specification](https://github.com/toon-format/spec/blob/main/SPEC.md)** - Complete technical specification
