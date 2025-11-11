@@ -10,7 +10,7 @@
     [clojure.string :as str]
     [com.vadelabs.toon.constants :as const]
     [com.vadelabs.toon.encode.arrays :as array]
-    [com.vadelabs.toon.encode.folding :as folding]
+    [com.vadelabs.toon.encode.keys :as keys]
     [com.vadelabs.toon.encode.normalize :as norm]
     [com.vadelabs.toon.encode.primitives :as prim]
     [com.vadelabs.toon.encode.writer :as writer]
@@ -175,7 +175,7 @@
    (key-value-pair k v options depth writer nil))
   ([k v options depth writer siblings]
    ;; Try key folding if enabled and siblings provided
-   (if-let [fold-result (and siblings (folding/result k v siblings options))]
+   (if-let [fold-result (and siblings (keys/fold k v siblings options))]
      ;; Folding succeeded - use folded key
      (let [{:keys [folded-key remainder leaf-value]} fold-result
            quoted-key (quote/maybe-quote-key folded-key)]

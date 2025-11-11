@@ -1,8 +1,8 @@
-(ns com.vadelabs.toon.encode.folding-test
+(ns com.vadelabs.toon.encode.keys-test
   (:require
     #?(:clj [clojure.test :refer [deftest is testing]]
        :cljs [cljs.test :refer [deftest is testing]])
-    [com.vadelabs.toon.encode.folding :as folding]))
+    [com.vadelabs.toon.encode.keys :as keys]))
 
 
 ;; ============================================================================
@@ -14,7 +14,7 @@
     (let [value {"config" {"server" "localhost"}}
           siblings []
           options {:key-folding :safe :flatten-depth ##Inf}
-          result (folding/result "data" value siblings options)]
+          result (keys/fold "data" value siblings options)]
       (is (some? result))
       (is (= "data.config.server" (:folded-key result)))
       (is (nil? (:remainder result)))
@@ -27,7 +27,7 @@
     (let [value {"config" {"server" "localhost"}}
           siblings []
           options {:key-folding :off :flatten-depth ##Inf}
-          result (folding/result "data" value siblings options)]
+          result (keys/fold "data" value siblings options)]
       (is (nil? result)))))
 
 
@@ -35,9 +35,9 @@
   (testing "Returns nil for non-object values"
     (let [options {:key-folding :safe :flatten-depth ##Inf}
           siblings []]
-      (is (nil? (folding/result "key" "string" siblings options)))
-      (is (nil? (folding/result "key" 42 siblings options)))
-      (is (nil? (folding/result "key" [1 2 3] siblings options))))))
+      (is (nil? (keys/fold "key" "string" siblings options)))
+      (is (nil? (keys/fold "key" 42 siblings options)))
+      (is (nil? (keys/fold "key" [1 2 3] siblings options))))))
 
 
 (deftest folding-result-multi-key-object-test
@@ -45,7 +45,7 @@
     (let [value {"a" 1 "b" 2}
           siblings []
           options {:key-folding :safe :flatten-depth ##Inf}
-          result (folding/result "key" value siblings options)]
+          result (keys/fold "key" value siblings options)]
       (is (nil? result)))))
 
 
@@ -54,7 +54,7 @@
     (let [value {"server" "localhost"}
           siblings []
           options {:key-folding :safe :flatten-depth ##Inf}
-          result (folding/result "data" value siblings options)]
+          result (keys/fold "data" value siblings options)]
       (is (some? result))
       (is (= "data.server" (:folded-key result)))
       (is (= 2 (:segment-count result))))))
@@ -65,21 +65,21 @@
     (let [value {"config" {"server.name" "localhost"}}
           siblings []
           options {:key-folding :safe :flatten-depth ##Inf}
-          result (folding/result "data" value siblings options)]
+          result (keys/fold "data" value siblings options)]
       (is (nil? result))))
 
   (testing "Returns nil when segment contains slash"
     (let [value {"config" {"server/name" "localhost"}}
           siblings []
           options {:key-folding :safe :flatten-depth ##Inf}
-          result (folding/result "data" value siblings options)]
+          result (keys/fold "data" value siblings options)]
       (is (nil? result))))
 
   (testing "Returns nil when segment starts with digit"
     (let [value {"config" {"123" "localhost"}}
           siblings []
           options {:key-folding :safe :flatten-depth ##Inf}
-          result (folding/result "data" value siblings options)]
+          result (keys/fold "data" value siblings options)]
       (is (nil? result)))))
 
 
@@ -88,7 +88,7 @@
     (let [value {"config" {"server" "localhost"}}
           siblings ["data.config.server"]  ; Collision!
           options {:key-folding :safe :flatten-depth ##Inf}
-          result (folding/result "data" value siblings options)]
+          result (keys/fold "data" value siblings options)]
       (is (nil? result)))))
 
 
@@ -97,7 +97,7 @@
     (let [value {"a" {"b" {"c" {"d" "value"}}}}
           siblings []
           options {:key-folding :safe :flatten-depth 3}
-          result (folding/result "root" value siblings options)]
+          result (keys/fold "root" value siblings options)]
       (is (some? result))
       (is (= "root.a.b" (:folded-key result)))
       (is (= {"c" {"d" "value"}} (:remainder result)))
@@ -110,7 +110,7 @@
     (let [value {"config" {"settings" {"host" "localhost" "port" 8080}}}
           siblings []
           options {:key-folding :safe :flatten-depth ##Inf}
-          result (folding/result "data" value siblings options)]
+          result (keys/fold "data" value siblings options)]
       (is (some? result))
       (is (= "data.config.settings" (:folded-key result)))
       (is (= {"host" "localhost" "port" 8080} (:remainder result)))
@@ -123,7 +123,7 @@
     (let [value {"config" {"tags" ["a" "b" "c"]}}
           siblings []
           options {:key-folding :safe :flatten-depth ##Inf}
-          result (folding/result "data" value siblings options)]
+          result (keys/fold "data" value siblings options)]
       (is (some? result))
       (is (= "data.config.tags" (:folded-key result)))
       (is (nil? (:remainder result)))
@@ -136,7 +136,7 @@
     (let [value {"config" {"settings" {}}}
           siblings []
           options {:key-folding :safe :flatten-depth ##Inf}
-          result (folding/result "data" value siblings options)]
+          result (keys/fold "data" value siblings options)]
       (is (some? result))
       (is (= "data.config.settings" (:folded-key result)))
       (is (nil? (:remainder result)))
@@ -149,6 +149,6 @@
     (let [value {"user_config" {"server_name" "localhost"}}
           siblings []
           options {:key-folding :safe :flatten-depth ##Inf}
-          result (folding/result "app_data" value siblings options)]
+          result (keys/fold "app_data" value siblings options)]
       (is (some? result))
       (is (= "app_data.user_config.server_name" (:folded-key result))))))

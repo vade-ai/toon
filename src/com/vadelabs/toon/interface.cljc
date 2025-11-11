@@ -1,7 +1,7 @@
 (ns com.vadelabs.toon.interface
   (:require
     [com.vadelabs.toon.decode.decoders :as decoders]
-    [com.vadelabs.toon.decode.expand :as expand]
+    [com.vadelabs.toon.decode.keys :as keys]
     [com.vadelabs.toon.decode.scanner :as scanner]
     [com.vadelabs.toon.encode.encoders]
     [com.vadelabs.toon.encode.normalize]
@@ -91,4 +91,4 @@
           ;; Decode from root
           decoded (decoders/value-from-lines cursor (:indent opts) (:strict opts))]
       ;; Apply path expansion if enabled
-      (expand/paths decoded (:strict opts) (:expand-paths opts)))))
+      (keys/expand decoded (:strict opts) (:expand-paths opts)))))

@@ -1,7 +1,7 @@
-(ns com.vadelabs.toon.encode.folding
-  "Key folding utilities for TOON encoding.
+(ns com.vadelabs.toon.encode.keys
+  "Key manipulation utilities for TOON encoding.
 
-  Provides functions to collapse nested single-key objects into dotted paths."
+  Provides functions to fold nested single-key objects into dotted paths."
   (:require
     [clojure.string :as str]
     [com.vadelabs.toon.constants :as const]
@@ -86,8 +86,8 @@
   (str/join const/dot segments))
 
 
-(defn result
-  "Returns fold result for a key-value pair, or nil if folding not possible.
+(defn fold
+  "Folds a key-value pair into a dotted path, or returns nil if folding not possible.
 
   Folding traverses nested objects with single keys, collapsing them into a dotted path.
   It stops when:
@@ -115,7 +115,7 @@
     Map with :folded-key, :remainder, :leaf-value, :segment-count if folding is possible,
     nil otherwise"
   ([key value siblings options]
-   (result key value siblings options nil nil))
+   (fold key value siblings options nil nil))
   ([key value siblings options root-literal-keys path-prefix]
    ;; Only fold when safe mode is enabled
    (when (= (:key-folding options) :safe)

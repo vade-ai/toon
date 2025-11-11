@@ -1,5 +1,5 @@
-(ns com.vadelabs.toon.decode.expand
-  "Path expansion utilities for TOON decoding.
+(ns com.vadelabs.toon.decode.keys
+  "Key manipulation utilities for TOON decoding.
 
   Provides functions to expand dotted keys into nested objects."
   (:require
@@ -152,7 +152,7 @@
                                (assoc parent-obj last-seg value))))))))))))
 
 
-(defn paths
+(defn expand
   "Expands dotted keys into nested objects in safe mode.
 
   Recursively traverses a decoded TOON value and expands any keys
@@ -186,7 +186,7 @@
 
     ;; Array - recursively expand elements
     (vector? value)
-    (mapv #(paths % strict expand-paths) value)
+    (mapv #(expand % strict expand-paths) value)
 
     ;; Object - expand dotted keys
     (json-object? value)
@@ -199,11 +199,11 @@
                          (every? utils/identifier-segment? segments)))
                 ;; Expandable - split and insert
                 (let [segments (str/split key (re-pattern (str "\\" const/dot)))
-                      expanded-value (paths key-value strict expand-paths)]
+                      expanded-value (expand key-value strict expand-paths)]
                   (insert-path acc segments expanded-value strict))
 
                 ;; Not expandable - keep as literal key, but still recursively expand the value
-                (let [expanded-value (paths key-value strict expand-paths)]
+                (let [expanded-value (expand key-value strict expand-paths)]
                   ;; Check for conflicts with already-expanded keys
                   (if (contains? acc key)
                     (let [conflicting-value (get acc key)]
