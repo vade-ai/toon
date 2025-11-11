@@ -38,7 +38,9 @@
     ;=> \"tags[3\\t]: a\\tb\\tc\""
   [input & [options]]
   (let [opts (merge {:indent 2
-                     :delimiter ","}
+                     :delimiter ","
+                     :key-folding :off
+                     :flatten-depth ##Inf}
                     options)]
     ;; Normalize input to JSON-compatible values
     (let [normalized (com.vadelabs.toon.encode.normalize/normalize-value input)

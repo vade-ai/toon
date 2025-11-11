@@ -322,6 +322,32 @@
 ;; Key Quoting Logic
 ;; ============================================================================
 
+(defn identifier-segment?
+  "Returns true if a key segment is a valid identifier for safe folding/expansion.
+
+  Identifier segments are more restrictive than unquoted keys:
+  - Must start with a letter (A-Z, a-z) or underscore (_)
+  - Followed only by letters, digits, or underscores (no dots or slashes)
+  - Used for safe key folding and path expansion
+
+  Parameters:
+    - segment: String segment to check
+
+  Returns:
+    Boolean indicating if segment is a valid identifier.
+
+  Examples:
+    (identifier-segment? \"name\")        ;=> true
+    (identifier-segment? \"user_id\")     ;=> true
+    (identifier-segment? \"user123\")     ;=> true
+    (identifier-segment? \"user.name\")   ;=> false (contains dot)
+    (identifier-segment? \"user/id\")     ;=> false (contains slash)
+    (identifier-segment? \"user name\")   ;=> false (contains space)
+    (identifier-segment? \"123\")         ;=> false (starts with digit)"
+  [segment]
+  (boolean (re-matches #"^[A-Za-z_]\w*$" segment)))
+
+
 (defn valid-unquoted-key?
   "Returns true if a key can be used without quotes.
 
