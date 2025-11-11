@@ -1,6 +1,7 @@
 (ns com.vadelabs.toon.interface
   (:require
     [com.vadelabs.toon.decode.decoders :as decoders]
+    [com.vadelabs.toon.decode.expand :as expand]
     [com.vadelabs.toon.decode.scanner :as scanner]
     [com.vadelabs.toon.encode.encoders]
     [com.vadelabs.toon.encode.normalize]
@@ -81,10 +82,13 @@
     ;=> {\"name\" \"Ada\"}"
   [input & [options]]
   (let [opts (merge {:indent 2
-                     :strict true}
+                     :strict true
+                     :expand-paths :off}
                     options)]
     ;; Parse input to lines with depth tracking
     (let [scan-result (scanner/to-parsed-lines input (:indent opts) (:strict opts))
-          cursor (scanner/cursor-from-scan-result scan-result)]
-      ;; Decode from root
-      (decoders/value-from-lines cursor (:indent opts) (:strict opts)))))
+          cursor (scanner/cursor-from-scan-result scan-result)
+          ;; Decode from root
+          decoded (decoders/value-from-lines cursor (:indent opts) (:strict opts))]
+      ;; Apply path expansion if enabled
+      (expand/paths decoded (:strict opts) (:expand-paths opts)))))
