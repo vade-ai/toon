@@ -57,8 +57,8 @@
       (is (= "[2]{id,name}:\n  1,Alice\n  2,Bob" result)))))
 
 
-(deftest encode-array-of-objects-with-length-marker-test
-  (testing "Encode array of objects with length marker"
+(deftest encode-array-of-objects-tabular-test
+  (testing "Encode array of objects in tabular format"
     (let [data [{:x 10 :y 20}
                 {:x 30 :y 40}]
           result (toon/encode data)]

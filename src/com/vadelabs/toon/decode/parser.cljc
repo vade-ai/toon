@@ -236,11 +236,11 @@
     - line: Header line string
 
   Returns:
-    Map with {:key, :length, :delimiter, :fields, :has-length-marker, :inline-values}
+    Map with {:key, :length, :delimiter, :fields, :inline-values}
 
   Example:
     (parse-array-header-line \"[3]:\")
-    => {:length 3 :delimiter \",\" :has-length-marker false}
+    => {:length 3 :delimiter \",\"}
 
     (parse-array-header-line \"items[2]{id,name}:\")
     => {:key \"items\" :length 2 :delimiter \",\" :fields [\"id\" \"name\"] ...}

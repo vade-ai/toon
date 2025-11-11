@@ -195,7 +195,6 @@ Encodes Clojure data structures to TOON format.
 - `options` - Optional map:
   - `:indent` - Spaces per indentation level (default: 2)
   - `:delimiter` - Array value delimiter: `","` (default), `"\t"`, or `"|"`
-  - `:length-marker` - Array length marker: `"#"` or `false` (default: false)
 
 **Returns:** String in TOON format
 
@@ -209,10 +208,6 @@ Encodes Clojure data structures to TOON format.
 ;; Custom delimiter
 (encode {:tags ["a" "b" "c"]} {:delimiter "\t"})
 ;=> "tags[3\t]: a\tb\tc"
-
-;; Length marker prefix
-(encode {:items [1 2 3]} {:length-marker "#"})
-;=> "items[#3]: 1,2,3"
 
 ;; Tabular array format
 (encode [{:id 1 :name "Alice"}
