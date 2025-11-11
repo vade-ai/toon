@@ -6,6 +6,21 @@ This project uses date-based versioning: `YYYY.MM.DD-N` where N is the number of
 
 This library implements [TOON v1.4 specification](https://github.com/toon-format/spec) (2025-11-05).
 
+## [Unreleased]
+
+### Removed
+
+- **Length marker option** - Removed `:length-marker` option from encode API
+  - Always use `[N]` format for array lengths (no more `[#N]` syntax)
+  - Simplified API and implementation
+  - **BREAKING CHANGE**: The `:length-marker` option is no longer supported
+
+### Changed
+
+- Updated documentation to reflect removal of length-marker option
+- Simplified parser to remove `#` marker support
+- Updated all encoding functions to remove length-marker parameter
+
 ## [2025.11.11-3] - 2025-11-11
 
 ### Changed
@@ -32,7 +47,7 @@ A Clojure/ClojureScript implementation of TOON (Token-Oriented Object Notation) 
 
 - **Full TOON v1.3 support** - encode and decode between Clojure data and TOON format
 - **Three array styles** - inline for primitives, tabular for uniform objects, list for mixed data
-- **Flexible options** - choose your delimiter (comma, tab, pipe), add length markers, adjust indentation
+- **Flexible options** - choose your delimiter (comma, tab, pipe), adjust indentation
 - **Smart string handling** - only quotes when necessary, supports Unicode and emoji
 - **Both platforms** - works in Clojure (JVM) and ClojureScript
 - **Well tested** - 340+ tests with 90%+ code coverage including property-based roundtrip testing
