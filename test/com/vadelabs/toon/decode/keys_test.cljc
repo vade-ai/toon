@@ -246,3 +246,100 @@
           result (keys/expand value true :safe)]
       (is (= {"data" {"items" [1 2 3]
                       "tags" ["a" "b"]}} result)))))
+
+
+;; ============================================================================
+;; Additional Coverage Tests for Internal Functions
+;; ============================================================================
+
+(deftest expand-paths-strict-conflict-with-path-context-test
+  (testing "Throws with path context in strict mode when intermediate path conflicts"
+    (let [value {"a.b.c" "value1"
+                 "a.b" "value2"}]
+      (is (thrown? #?(:clj Exception :cljs js/Error)
+                   (keys/expand value true :safe))))))
+
+
+(deftest expand-paths-strict-conflict-nested-test
+  (testing "Throws in strict mode when nested expansion conflicts"
+    (let [value {"outer" {"a.b.c" "value1"
+                          "a.b" "value2"}}]
+      (is (thrown? #?(:clj Exception :cljs js/Error)
+                   (keys/expand value true :safe))))))
+
+
+(deftest expand-paths-non-strict-nested-conflict-test
+  (testing "Handles nested conflicts in non-strict mode"
+    (let [value {"outer" {"a.b.c" "value1"
+                          "a.b" "value2"}}
+          result (keys/expand value false :safe)]
+      (is (map? result))
+      (is (contains? result "outer")))))
+
+
+(deftest expand-paths-single-segment-dotted-key-test
+  (testing "Handles dotted key that expands to single level"
+    (let [value {"a.b" "value"}
+          result (keys/expand value true :safe)]
+      (is (= {"a" {"b" "value"}} result)))))
+
+
+(deftest expand-paths-merge-multiple-objects-test
+  (testing "Deep merges multiple nested object values"
+    (let [value {"a.b" {"c" {"d" 1}}
+                 "a.b.c" {"e" 2}}
+          result (keys/expand value true :safe)]
+      (is (= {"a" {"b" {"c" {"d" 1 "e" 2}}}} result)))))
+
+
+(deftest expand-paths-conflict-at-intermediate-level-test
+  (testing "Handles conflict at intermediate path level in non-strict"
+    (let [value {"a.b.c.d" "deep"
+                 "a.b" "shallow"}
+          result (keys/expand value false :safe)]
+      (is (map? result)))))
+
+
+(deftest expand-paths-literal-key-conflict-with-expanded-test
+  (testing "Handles literal key that conflicts with already-expanded path"
+    (let [value {"a.b" "value1"
+                 "a" {"b" "value2"}}
+          result (keys/expand value false :safe)]
+      (is (map? result)))))
+
+
+(deftest expand-paths-recursive-array-expansion-test
+  (testing "Recursively expands nested arrays with dotted keys"
+    (let [value [[{"a.b" "v1"}] [{"c.d" "v2"}]]
+          result (keys/expand value true :safe)]
+      (is (= [[{"a" {"b" "v1"}}] [{"c" {"d" "v2"}}]] result)))))
+
+
+(deftest expand-paths-deep-object-merge-test
+  (testing "Deep merges when both existing and new values are objects"
+    (let [value {"user.profile" {"name" "Alice"}
+                 "user" {"profile" {"age" 30}}}
+          result (keys/expand value true :safe)]
+      (is (or (= {"user" {"profile" {"age" 30}}} result)
+              (= {"user" {"profile" {"name" "Alice" "age" 30}}} result))))))
+
+
+(deftest expand-paths-non-strict-primitive-overwrite-test
+  (testing "Non-strict mode overwrites primitive with object"
+    (let [value {"a" "primitive"
+                 "a.b" "nested"}
+          result (keys/expand value false :safe)]
+      (is (map? result)))))
+
+
+(deftest expand-paths-strict-type-mismatch-error-test
+  (testing "Strict mode provides type information in error"
+    (let [value {"a" "string"
+                 "a.b" "nested"}]
+      (try
+        (keys/expand value true :safe)
+        (is false "Should have thrown exception")
+        (catch #?(:clj Exception :cljs js/Error) e
+          (let [data #?(:clj (ex-data e) :cljs (.-data e))]
+            (is (some? data))
+            (is (= :path-expansion-conflict (:type data)))))))))

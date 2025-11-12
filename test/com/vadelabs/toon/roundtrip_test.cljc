@@ -17,13 +17,16 @@
   "Minimal iteration count for very simple property tests (e.g., booleans)"
   10)
 
+
 (def ^:private quick-check-iterations
   "Standard iteration count for basic property tests (primitives, simple structures)"
   20)
 
+
 (def ^:private standard-check-iterations
   "Moderate iteration count for complex scenarios (large structures, combinations)"
   30)
+
 
 (def ^:private thorough-check-iterations
   "Higher iteration count for edge cases, special characters, and delimiter variations"
@@ -73,13 +76,13 @@
 
 (def gen-non-empty-string
   "Generator for non-empty strings"
-  (gen/such-that #(not (empty? %)) gen/string-alphanumeric 100))
+  (gen/such-that seq gen/string-alphanumeric 100))
 
 
 (def gen-json-primitive
   "Generator for JSON primitive values"
   (gen/one-of [gen/string-alphanumeric
-               gen/int
+               gen/small-integer
                gen/boolean
                (gen/return nil)]))
 
@@ -96,7 +99,7 @@
 
 (def gen-int-vector
   "Generator for non-empty vectors of integers"
-  (gen/vector gen/int 1 10))
+  (gen/vector gen/small-integer 1 10))
 
 
 (def gen-bool-vector
@@ -124,7 +127,7 @@
 
 
 (defspec primitive-number-roundtrip quick-check-iterations
-  (prop/for-all [n gen/int]
+  (prop/for-all [n gen/small-integer]
                 (= (double n) (roundtrip n))))
 
 
@@ -138,7 +141,7 @@
 
 
 (defspec array-number-roundtrip quick-check-iterations
-  (prop/for-all [arr (gen/vector gen/int 1 10)]
+  (prop/for-all [arr (gen/vector gen/small-integer 1 10)]
                 (let [expected (mapv double arr)
                       actual (roundtrip arr)]
                   (= expected actual))))
@@ -166,7 +169,7 @@
 
 (defspec object-mixed-values-roundtrip quick-check-iterations
   (prop/for-all [name gen-non-empty-string
-                 age gen/int
+                 age gen/small-integer
                  active gen/boolean]
                 (let [obj {"name" name "age" age "active" active}
                       expected (normalize-for-comparison obj)
@@ -180,7 +183,7 @@
 
 (defspec nested-object-roundtrip quick-check-iterations
   (prop/for-all [name gen-non-empty-string
-                 age gen/int]
+                 age gen/small-integer]
                 (let [obj {"user" {"name" name "age" age}}
                       expected (normalize-for-comparison obj)
                       actual (roundtrip obj)]
@@ -199,7 +202,7 @@
 (defspec array-of-objects-roundtrip quick-check-iterations
   (prop/for-all [objects (gen/vector
                            (gen/fmap (fn [[id name]] {"id" id "name" name})
-                                     (gen/tuple gen/int gen-non-empty-string))
+                                     (gen/tuple gen/small-integer gen-non-empty-string))
                            1 5)]
                 (let [expected (normalize-for-comparison objects)
                       actual (roundtrip objects)]
@@ -240,7 +243,7 @@
 (def gen-complex-value
   "Generator for complex but safe JSON values (avoiding nested arrays)"
   (gen/one-of [gen-non-empty-string
-               gen/int
+               gen/small-integer
                gen/boolean
                (gen/return nil)
                gen-simple-map]))
@@ -295,7 +298,7 @@
 
 (def gen-nested-array
   "Generator for arrays of arrays"
-  (gen/vector (gen/vector gen/int 0 5) 1 5))
+  (gen/vector (gen/vector gen/small-integer 0 5) 1 5))
 
 
 ;; ============================================================================
@@ -304,7 +307,7 @@
 
 (defspec deeply-nested-objects-roundtrip thorough-check-iterations
   (prop/for-all [name gen-non-empty-string
-                 age gen/int
+                 age gen/small-integer
                  city gen-non-empty-string]
                 (let [obj {"level1" {"level2" {"level3" {"name" name "age" age "city" city}}}}
                       expected (normalize-for-comparison obj)
@@ -380,7 +383,7 @@
 
 
 (defspec large-array-roundtrip standard-check-iterations
-  (prop/for-all [arr (gen/vector gen/int 50 200)]
+  (prop/for-all [arr (gen/vector gen/small-integer 50 200)]
                 (let [expected (mapv double arr)
                       actual (roundtrip arr)]
                   (= expected actual))))
@@ -390,7 +393,7 @@
   (prop/for-all [objects (gen/vector
                            (gen/fmap (fn [[id name]]
                                        {"id" id "name" name})
-                                     (gen/tuple gen/int gen-non-empty-string))
+                                     (gen/tuple gen/small-integer gen-non-empty-string))
                            10 50)]
                 (let [expected (normalize-for-comparison objects)
                       actual (roundtrip objects)]

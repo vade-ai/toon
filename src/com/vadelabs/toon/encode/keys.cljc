@@ -37,17 +37,14 @@
           ks (when is-object? (keys current-value))
           single-key? (and is-object? (= (count ks) 1))]
 
-      (cond
+      (if (or depth-reached? (not is-object?) (not single-key?))
         ;; Terminal conditions - stop traversal
-        (or depth-reached? (not is-object?) (not single-key?))
         {:segments segments
          :tail (when (and is-object? (seq ks)) current-value)
          :leaf-value current-value}
-
         ;; Continue traversal for single-key object
-        :else
-        (let [next-key (first ks)
-              next-value (get current-value next-key)]
+        (let [[next-key] ks
+              next-value (current-value next-key)]
           (recur (conj segments next-key) next-value))))))
 
 

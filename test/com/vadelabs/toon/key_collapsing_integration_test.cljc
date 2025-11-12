@@ -2,6 +2,7 @@
   (:require
     #?(:clj [clojure.test :refer [deftest is testing]]
        :cljs [cljs.test :refer [deftest is testing]])
+    [clojure.string :as str]
     [com.vadelabs.toon.interface :as toon]))
 
 
@@ -28,7 +29,7 @@
     (let [data {"user" {"name" {"first" "Alice"}}
                 "app" {"version" {"number" "1.0"}}}
           result (toon/encode data {:key-collapsing :safe})
-          lines (clojure.string/split-lines result)]
+          lines (str/split-lines result)]
       (is (= 2 (count lines)))
       (is (some #(= "app.version.number: \"1.0\"" %) lines))
       (is (some #(= "user.name.first: Alice" %) lines)))))
@@ -38,15 +39,15 @@
   (testing "Partially collapses when encountering multi-key object"
     (let [data {"data" {"config" {"server" "localhost" "port" 8080}}}
           result (toon/encode data {:key-collapsing :safe})
-          lines (clojure.string/split-lines result)]
+          lines (str/split-lines result)]
       ;; Should have data.config: followed by indented keys
       (is (= 3 (count lines)))
       (is (= "data.config:" (first lines)))
       ;; Port and server can be in any order
-      (is (or (and (clojure.string/includes? (second lines) "port")
-                   (clojure.string/includes? (nth lines 2) "server"))
-              (and (clojure.string/includes? (second lines) "server")
-                   (clojure.string/includes? (nth lines 2) "port")))))))
+      (is (or (and (str/includes? (second lines) "port")
+                   (str/includes? (nth lines 2) "server"))
+              (and (str/includes? (second lines) "server")
+                   (str/includes? (nth lines 2) "port")))))))
 
 
 (deftest key-collapsing-with-array-leaf-test
@@ -114,7 +115,7 @@
     (let [data {"nested" {"single" {"key" "value"}}
                 "other" "data"}
           result (toon/encode data {:key-collapsing :safe})
-          lines (clojure.string/split-lines result)]
+          lines (str/split-lines result)]
       (is (= 2 (count lines)))
       (is (or (and (= "nested.single.key: value" (first lines))
                    (= "other: data" (second lines)))
@@ -149,12 +150,12 @@
                        "config" {"server" {"host" "localhost"}}}
                 "version" "1.0"}
           result (toon/encode data {:key-collapsing :safe})
-          lines (clojure.string/split-lines result)]
+          lines (str/split-lines result)]
       ;; app has multiple keys so stays nested, but config.server.host collapses within it
       (is (= 4 (count lines)))
       (is (some #(= "app:" %) lines))
-      (is (some #(clojure.string/includes? % "name: MyApp") lines))
-      (is (some #(clojure.string/includes? % "config.server.host: localhost") lines))
+      (is (some #(str/includes? % "name: MyApp") lines))
+      (is (some #(str/includes? % "config.server.host: localhost") lines))
       (is (some #(= "version: \"1.0\"" %) lines)))))
 
 
@@ -215,7 +216,7 @@
   (testing "Partially collapses with array of objects"
     (let [data {"app" {"users" [{"id" 1} {"id" 2}]}}
           result (toon/encode data {:key-collapsing :safe})]
-      (is (clojure.string/includes? result "app.users[2]:")))))
+      (is (str/includes? result "app.users[2]:")))))
 
 
 (deftest key-collapsing-empty-nested-objects-test
@@ -239,7 +240,7 @@
     (let [data {"user" {"profile" {"name" "Alice"}}
                 "user2" {"profile" {"name" "Bob"}}}
           result (toon/encode data {:key-collapsing :safe})
-          lines (clojure.string/split-lines result)]
+          lines (str/split-lines result)]
       (is (= 2 (count lines)))
       (is (some #(= "user.profile.name: Alice" %) lines))
       (is (some #(= "user2.profile.name: Bob" %) lines)))))
