@@ -1,7 +1,7 @@
 (ns com.vadelabs.toon.encode.keys
   "Key manipulation utilities for TOON encoding.
 
-  Provides functions to fold nested single-key objects into dotted paths."
+  Provides functions to collapse nested single-key objects into dotted paths."
   (:require
     [clojure.string :as str]
     [com.vadelabs.toon.constants :as const]
@@ -9,7 +9,7 @@
 
 
 ;; ============================================================================
-;; Key Folding Helpers
+;; Key Collapsing Helpers
 ;; ============================================================================
 
 (defn- json-object?
@@ -86,10 +86,10 @@
   (str/join const/dot segments))
 
 
-(defn fold
-  "Folds a key-value pair into a dotted path, or returns nil if folding not possible.
+(defn collapse
+  "Collapses a key-value pair into a dotted path, or returns nil if collapsing not possible.
 
-  Folding traverses nested objects with single keys, collapsing them into a dotted path.
+  Collapsing traverses nested objects with single keys, merging them into a dotted path.
   It stops when:
   - A non-single-key object is encountered
   - An array is encountered
@@ -98,28 +98,28 @@
   - Any segment fails safe mode validation
 
   Safe mode requirements:
-  - key-folding must be :safe
+  - key-collapsing must be :safe
   - Every segment must be a valid identifier (no dots, no special chars)
-  - The folded key must not collide with existing sibling keys
-  - The folded key must not collide with root-level literal dotted keys
+  - The collapsed key must not collide with existing sibling keys
+  - The collapsed key must not collide with root-level literal dotted keys
 
   Parameters:
-    - key: The starting key to fold
+    - key: The starting key to collapse
     - value: The value associated with the key
     - siblings: Vector of all sibling keys at this level (for collision detection)
-    - options: Map with :key-folding and :flatten-depth
+    - options: Map with :key-collapsing and :flatten-depth
     - root-literal-keys: Optional set of dotted keys that exist at root level
     - path-prefix: Optional string prefix for building absolute path
 
   Returns:
-    Map with :folded-key, :remainder, :leaf-value, :segment-count if folding is possible,
+    Map with :collapsed-key, :remainder, :leaf-value, :segment-count if collapsing is possible,
     nil otherwise"
   ([key value siblings options]
-   (fold key value siblings options nil nil))
+   (collapse key value siblings options nil nil))
   ([key value siblings options root-literal-keys path-prefix]
-   ;; Only fold when safe mode is enabled
-   (when (= (:key-folding options) :safe)
-     ;; Can only fold objects
+   ;; Only collapse when safe mode is enabled
+   (when (= (:key-collapsing options) :safe)
+     ;; Can only collapse objects
      (when (json-object? value)
        (let [;; Use provided flatten-depth or fall back to options default
              effective-flatten-depth (:flatten-depth options ##Inf)
@@ -127,23 +127,23 @@
              ;; Collect the chain of single-key objects
              {:keys [segments tail leaf-value]} (chain key value effective-flatten-depth)]
 
-         ;; Need at least 2 segments for folding to be worthwhile
+         ;; Need at least 2 segments for collapsing to be worthwhile
          (when (>= (count segments) 2)
            ;; Validate all segments are safe identifiers
            (when (every? utils/identifier-segment? segments)
-             (let [;; Build the folded key (relative to current nesting level)
-                   folded-key (dotted-key segments)
+             (let [;; Build the collapsed key (relative to current nesting level)
+                   collapsed-key (dotted-key segments)
 
                    ;; Build the absolute path from root
                    absolute-path (if path-prefix
-                                   (str path-prefix const/dot folded-key)
-                                   folded-key)]
+                                   (str path-prefix const/dot collapsed-key)
+                                   collapsed-key)]
 
                ;; Check for collision with existing literal sibling keys (at current level)
-               (when-not (some #{folded-key} siblings)
+               (when-not (some #{collapsed-key} siblings)
                  ;; Check for collision with root-level literal dotted keys
                  (when-not (and root-literal-keys (contains? root-literal-keys absolute-path))
-                   {:folded-key folded-key
+                   {:collapsed-key collapsed-key
                     :remainder tail
                     :leaf-value leaf-value
                     :segment-count (count segments)}))))))))))

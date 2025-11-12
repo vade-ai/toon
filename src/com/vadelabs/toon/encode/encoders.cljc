@@ -5,7 +5,7 @@
   - Simple key-value pairs
   - Nested objects with indentation
   - Arrays as values
-  - Key folding for nested single-key objects"
+  - Key collapsing for nested single-key objects"
   (:require
     [clojure.string :as str]
     [com.vadelabs.toon.constants :as const]
@@ -152,14 +152,14 @@
 (defn key-value-pair
   "Encodes a single key-value pair by dispatching to appropriate encoder.
 
-  Supports key folding for nested single-key objects when enabled.
+  Supports key collapsing for nested single-key objects when enabled.
 
   Dispatches based on value type:
   - Primitives → primitive-pair
   - Empty arrays → empty-array-pair
   - Primitive arrays → primitive-array-pair
   - Complex arrays → complex-array-pair
-  - Objects → object-pair (or folded key path)
+  - Objects → object-pair (or collapsed key path)
 
   Parameters:
     - k: String key
@@ -167,20 +167,20 @@
     - options: Encoding options map
     - depth: Current indentation depth
     - writer: LineWriter instance
-    - siblings: Optional vector of sibling keys (for folding collision detection)
+    - siblings: Optional vector of sibling keys (for collapsing collision detection)
 
   Returns:
     Updated LineWriter"
   ([k v options depth writer]
    (key-value-pair k v options depth writer nil))
   ([k v options depth writer siblings]
-   ;; Try key folding if enabled and siblings provided
-   (if-let [fold-result (and siblings (keys/fold k v siblings options))]
-     ;; Folding succeeded - use folded key
-     (let [{:keys [folded-key remainder leaf-value]} fold-result
-           quoted-key (quote/maybe-quote-key folded-key)]
+   ;; Try key collapsing if enabled and siblings provided
+   (if-let [collapse-result (and siblings (keys/collapse k v siblings options))]
+     ;; Collapsing succeeded - use collapsed key
+     (let [{:keys [collapsed-key remainder leaf-value]} collapse-result
+           quoted-key (quote/maybe-quote-key collapsed-key)]
        (cond
-         ;; Case 1: Fully folded to a leaf value
+         ;; Case 1: Fully collapsed to a leaf value
          (nil? remainder)
          (cond
            ;; Leaf is a primitive
@@ -214,7 +214,7 @@
            :else
            writer)
 
-         ;; Case 2: Partially folded with remainder
+         ;; Case 2: Partially collapsed with remainder
          (map? remainder)
          (let [w (writer/push writer depth (str quoted-key const/colon))]
            (object remainder options (inc depth) w))
@@ -222,7 +222,7 @@
          :else
          writer))
 
-     ;; No folding - dispatch normally
+     ;; No collapsing - dispatch normally
      (cond
        (norm/primitive? v)
        (primitive-pair k v options depth writer)
@@ -247,11 +247,11 @@
 (defn object
   "Encodes a map to TOON format.
 
-  Collects all keys first to enable folding collision detection.
+  Collects all keys first to enable collapsing collision detection.
 
   Parameters:
     - obj: Map to encode
-    - options: Encoding options map with :delimiter and :key-folding
+    - options: Encoding options map with :delimiter and :key-collapsing
     - depth: Current indentation depth
     - writer: LineWriter instance
 

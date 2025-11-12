@@ -47,19 +47,19 @@
 
 
 (deftest path-expansion-roundtrip-test
-  (testing "Roundtrip with folding and expansion"
+  (testing "Roundtrip with collapsing and expansion"
     (let [original {"data" {"config" {"server" "localhost"}}}
-          encoded (toon/encode original {:key-folding :safe})
+          encoded (toon/encode original {:key-collapsing :safe})
           decoded (toon/decode encoded {:expand-paths :safe})]
       (is (= "data.config.server: localhost" encoded))
       (is (= original decoded)))))
 
 
 (deftest path-expansion-complex-roundtrip-test
-  (testing "Complex roundtrip with folding and expansion"
+  (testing "Complex roundtrip with collapsing and expansion"
     (let [original {"app" {"name" "MyApp"}
                     "config" {"server" {"host" "localhost" "port" 8080}}}
-          encoded (toon/encode original {:key-folding :safe})
+          encoded (toon/encode original {:key-collapsing :safe})
           decoded (toon/decode encoded {:expand-paths :safe})]
       ;; After roundtrip, structure should be preserved (numbers become floats)
       (is (= "app.name: MyApp\nconfig.server:\n  host: localhost\n  port: 8080"
@@ -99,16 +99,16 @@
 (deftest path-expansion-nested-object-roundtrip-test
   (testing "Roundtrip with deeply nested objects"
     (let [original {"level1" {"level2" {"level3" {"value" "deep"}}}}
-          encoded (toon/encode original {:key-folding :safe})
+          encoded (toon/encode original {:key-collapsing :safe})
           decoded (toon/decode encoded {:expand-paths :safe})]
       (is (= "level1.level2.level3.value: deep" encoded))
       (is (= original decoded)))))
 
 
 (deftest path-expansion-partial-fold-roundtrip-test
-  (testing "Roundtrip with partially folded structure"
+  (testing "Roundtrip with partially collapsed structure"
     (let [original {"data" {"config" {"host" "localhost" "port" 8080}}}
-          encoded (toon/encode original {:key-folding :safe})
+          encoded (toon/encode original {:key-collapsing :safe})
           decoded (toon/decode encoded {:expand-paths :safe})]
       (is (= {"data" {"config" {"host" "localhost" "port" 8080.0}}} decoded)))))
 
@@ -173,7 +173,7 @@
 (deftest path-expansion-roundtrip-underscore-test
   (testing "Roundtrip with underscore-prefixed keys"
     (let [original {"_data" {"_config" {"_server" "localhost"}}}
-          encoded (toon/encode original {:key-folding :safe})
+          encoded (toon/encode original {:key-collapsing :safe})
           decoded (toon/decode encoded {:expand-paths :safe})]
       (is (= original decoded)))))
 
@@ -181,7 +181,7 @@
 (deftest path-expansion-roundtrip-very-deep-test
   (testing "Roundtrip with very deep structures"
     (let [original {"a" {"b" {"c" {"d" {"e" {"f" "deep"}}}}}}
-          encoded (toon/encode original {:key-folding :safe})
+          encoded (toon/encode original {:key-collapsing :safe})
           decoded (toon/decode encoded {:expand-paths :safe})]
       (is (= original decoded)))))
 

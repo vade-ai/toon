@@ -40,7 +40,7 @@
   [input & [options]]
   (let [opts (merge {:indent 2
                      :delimiter ","
-                     :key-folding :off
+                     :key-collapsing :off
                      :flatten-depth ##Inf}
                     options)]
     ;; Normalize input to JSON-compatible values

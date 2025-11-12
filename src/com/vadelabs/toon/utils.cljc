@@ -323,12 +323,12 @@
 ;; ============================================================================
 
 (defn identifier-segment?
-  "Returns true if a key segment is a valid identifier for safe folding/expansion.
+  "Returns true if a key segment is a valid identifier for safe collapsing/expansion.
 
   Identifier segments are more restrictive than unquoted keys:
   - Must start with a letter (A-Z, a-z) or underscore (_)
   - Followed only by letters, digits, or underscores (no dots or slashes)
-  - Used for safe key folding and path expansion
+  - Used for safe key collapsing and path expansion
 
   Parameters:
     - segment: String segment to check
