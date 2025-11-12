@@ -239,11 +239,8 @@
   Matches standard numeric patterns (42, -3.14, 1e-6) and
   leading zero patterns (05, 007)."
   [value]
-  (or
-    ;; Standard numeric pattern: 42, -3.14, 1e-6
-    (boolean (re-matches numeric-pattern value))
-    ;; Leading zeros pattern: 05, 007
-    (boolean (re-matches leading-zero-pattern value))))
+  (boolean (or (re-matches numeric-pattern value)
+               (re-matches leading-zero-pattern value))))
 
 
 (defn has-structural-chars?
@@ -382,7 +379,7 @@
     (identifier-segment? \"user name\")   ;=> false (contains space)
     (identifier-segment? \"123\")         ;=> false (starts with digit)"
   [segment]
-  (boolean (re-matches identifier-segment-pattern segment)))
+  (some? (re-matches identifier-segment-pattern segment)))
 
 
 (defn valid-unquoted-key?
@@ -409,7 +406,7 @@
     (valid-unquoted-key? \"123\")         ;=> false (starts with digit)
     (valid-unquoted-key? \"key:value\")   ;=> false (colon)"
   [key]
-  (boolean (re-matches valid-unquoted-key-pattern key)))
+  (some? (re-matches valid-unquoted-key-pattern key)))
 
 
 (defn maybe-quote-key
