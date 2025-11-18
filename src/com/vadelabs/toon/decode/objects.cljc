@@ -14,6 +14,98 @@
 
 
 ;; ============================================================================
+;; Helper Functions for Object Decoding
+;; ============================================================================
+
+(defn- decode-nested-array
+  "Decodes a nested array (tabular or list format).
+
+  Parameters:
+    - content: Line content with array header
+    - cursor: Current cursor
+    - depth: Current depth
+    - strict: Strict mode flag
+    - list-item-fn: List item decoder function
+
+  Returns:
+    [array-key, decoded-array, new-cursor]"
+  [content cursor depth strict list-item-fn]
+  (let [header-info (parser/array-header-line content)
+        array-key (:key header-info)
+        cursor-after-header (scanner/advance-cursor cursor)
+        nested-depth (inc depth)
+        [decoded-array final-cursor] (cond
+                                       ;; Tabular array
+                                       (:fields header-info)
+                                       (arrays/tabular-array header-info cursor-after-header nested-depth strict)
+
+                                       ;; List array
+                                       :else
+                                       (arrays/list-array header-info cursor-after-header nested-depth strict list-item-fn))]
+    [array-key decoded-array final-cursor]))
+
+
+(defn- decode-nested-object-or-nil
+  "Decodes a nested object or returns nil if no nested content.
+
+  Parameters:
+    - k: The key for this value
+    - cursor: Current cursor
+    - depth: Current depth
+    - delimiter: Delimiter character
+    - strict: Strict mode flag
+    - list-item-fn: List item decoder function
+
+  Returns:
+    [key, value, new-cursor]"
+  [k cursor depth delimiter strict list-item-fn]
+  (let [cursor-after-key (scanner/advance-cursor cursor)
+        next-line (scanner/peek-cursor cursor-after-key)]
+    (if (and next-line (> (:depth next-line) depth))
+      ;; Has nested content: decode as nested object
+      (let [nested-depth (inc depth)
+            [nested-obj final-cursor] (object cursor-after-key nested-depth delimiter strict list-item-fn)]
+        [k nested-obj final-cursor])
+      ;; No nested content: empty value
+      [k nil cursor-after-key])))
+
+
+(defn- decode-inline-array
+  "Decodes an inline primitive array.
+
+  Parameters:
+    - content: Line content with inline array
+    - cursor: Current cursor
+    - strict: Strict mode flag
+
+  Returns:
+    [array-key, decoded-array, new-cursor]"
+  [content cursor strict]
+  (let [header-info (parser/array-header-line content)
+        array-key (:key header-info)
+        decoded-array (arrays/inline-primitive-array header-info strict)
+        new-cursor (scanner/advance-cursor cursor)]
+    [array-key decoded-array new-cursor]))
+
+
+(defn- decode-inline-primitive
+  "Decodes an inline primitive value.
+
+  Parameters:
+    - k: The key for this value
+    - value-part: The value string
+    - cursor: Current cursor
+    - strict: Strict mode flag
+
+  Returns:
+    [key, value, new-cursor]"
+  [k value-part cursor strict]
+  (let [value (parser/primitive-token value-part strict)
+        new-cursor (scanner/advance-cursor cursor)]
+    [k value new-cursor]))
+
+
+;; ============================================================================
 ;; Object Decoding
 ;; ============================================================================
 
@@ -43,51 +135,37 @@
              [obj remaining-cursor]
              (let [key-part (subs content 0 colon-pos)
                    value-part (str/trim (subs content (inc colon-pos)))
-                   k (parser/key-token key-part)]
-               (if (empty? value-part)
-                 ;; No inline value: check if key contains array header
-                 (if (str/includes? key-part "[")
-                   ;; Array with nested items
-                   (let [header-info (parser/array-header-line content)
-                         array-key (:key header-info)
-                         cursor-after-header (scanner/advance-cursor remaining-cursor)
-                         nested-depth (inc depth)
-                         [decoded-array final-cursor] (cond
-                                                        ;; Tabular array
-                                                        (:fields header-info)
-                                                        (arrays/tabular-array header-info cursor-after-header nested-depth strict)
+                   k (parser/key-token key-part)
+                   has-array-header? (str/includes? key-part "[")
+                   has-inline-value? (not (empty? value-part))]
+               (cond
+                 ;; Nested array (no inline value, has array header)
+                 (and (not has-inline-value?) has-array-header?)
+                 (let [[array-key decoded-array final-cursor]
+                       (decode-nested-array content remaining-cursor depth strict list-item-fn)]
+                   (recur final-cursor
+                          (assoc obj array-key decoded-array)))
 
-                                                        ;; List array
-                                                        :else
-                                                        (arrays/list-array header-info cursor-after-header nested-depth strict list-item-fn))]
-                     (recur final-cursor
-                            (assoc obj array-key decoded-array)))
-                   ;; Regular key: check for nested object content
-                   (let [cursor-after-key (scanner/advance-cursor remaining-cursor)
-                         next-line (scanner/peek-cursor cursor-after-key)]
-                     (if (and next-line (> (:depth next-line) depth))
-                       ;; Has nested content: decode as nested object
-                       (let [nested-depth (inc depth)
-                             [nested-obj final-cursor] (object cursor-after-key nested-depth delimiter strict list-item-fn)]
-                         (recur final-cursor
-                                (assoc obj k nested-obj)))
-                       ;; No nested content: empty value
-                       (recur cursor-after-key
-                              (assoc obj k nil)))))
-                 ;; Has inline value: check if key contains array header
-                 (if (str/includes? key-part "[")
-                   ;; Inline array
-                   (let [header-info (parser/array-header-line content)
-                         array-key (:key header-info)
-                         decoded-array (arrays/inline-primitive-array header-info strict)
-                         new-cursor (scanner/advance-cursor remaining-cursor)]
-                     (recur new-cursor
-                            (assoc obj array-key decoded-array)))
-                   ;; Regular inline primitive value
-                   (let [value (parser/primitive-token value-part strict)
-                         new-cursor (scanner/advance-cursor remaining-cursor)]
-                     (recur new-cursor
-                            (assoc obj k value)))))))))))))
+                 ;; Nested object or nil (no inline value, no array header)
+                 (not has-inline-value?)
+                 (let [[key value final-cursor]
+                       (decode-nested-object-or-nil k remaining-cursor depth delimiter strict list-item-fn)]
+                   (recur final-cursor
+                          (assoc obj key value)))
+
+                 ;; Inline array (has inline value, has array header)
+                 has-array-header?
+                 (let [[array-key decoded-array new-cursor]
+                       (decode-inline-array content remaining-cursor strict)]
+                   (recur new-cursor
+                          (assoc obj array-key decoded-array)))
+
+                 ;; Inline primitive (has inline value, no array header)
+                 :else
+                 (let [[key value new-cursor]
+                       (decode-inline-primitive k value-part remaining-cursor strict)]
+                   (recur new-cursor
+                          (assoc obj key value))))))))))))
 
 
 ;; ============================================================================
