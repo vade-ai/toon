@@ -127,6 +127,62 @@
 ;; Delimited Value Parsing
 ;; ============================================================================
 
+(defn- escaped-char-pair
+  "Processes an escaped character pair in quoted context.
+
+  Returns updated state map with position advanced by 2."
+  [pos current ch next-ch in-quotes values]
+  {:pos (+ pos 2)
+   :current (doto current (.append ch) (.append next-ch))
+   :in-quotes in-quotes
+   :values values})
+
+
+(defn- quote-char
+  "Processes a quote character, toggling quote state.
+
+  Returns updated state map."
+  [pos current ch in-quotes values]
+  {:pos (inc pos)
+   :current (doto current (.append ch))
+   :in-quotes (not in-quotes)
+   :values values})
+
+
+(defn- delimiter-char
+  "Processes a delimiter character outside quotes.
+
+  Splits current buffer and starts new token.
+  Returns updated state map."
+  [pos current in-quotes values]
+  {:pos (inc pos)
+   :current #?(:clj (StringBuilder.)
+               :cljs (goog.string/StringBuffer.))
+   :in-quotes in-quotes
+   :values (conj values (str/trim (.toString current)))})
+
+
+(defn- regular-char
+  "Processes a regular character.
+
+  Returns updated state map."
+  [pos current ch in-quotes values]
+  {:pos (inc pos)
+   :current (doto current (.append ch))
+   :in-quotes in-quotes
+   :values values})
+
+
+(defn- final-token
+  "Extracts final token from buffer if non-empty.
+
+  Returns complete values vector."
+  [current values]
+  (if (zero? (.length current))
+    values
+    (conj values (str/trim (.toString current)))))
+
+
 (defn delimited-values
   "Splits a string by delimiter, respecting quoted sections.
 
@@ -149,41 +205,29 @@
           in-quotes false
           values []]
      (if (>= pos (count input))
-       ;; End of string
-       (if (zero? (.length current))
-         values
-         (conj values (str/trim (.toString current))))
-       (let [ch (nth input pos)]
-         (cond
-           ;; Handle backslash escapes in quotes
-           (and (= ch \\) in-quotes (< (inc pos) (count input)))
-           (let [next-ch (nth input (inc pos))]
-             (recur (+ pos 2)
-                    (doto current (.append ch) (.append next-ch))
-                    in-quotes
-                    values))
+       ;; End of string - extract final token
+       (final-token current values)
+       (let [ch (nth input pos)
+             next-state (cond
+                          ;; Escaped character in quotes
+                          (and (= ch \\) in-quotes (< (inc pos) (count input)))
+                          (escaped-char-pair pos current ch (nth input (inc pos)) in-quotes values)
 
-           ;; Toggle quote state
-           (= ch \")
-           (recur (inc pos)
-                  (doto current (.append ch))
-                  (not in-quotes)
-                  values)
+                          ;; Quote character - toggle state
+                          (= ch \")
+                          (quote-char pos current ch in-quotes values)
 
-           ;; Delimiter outside quotes: split here
-           (and (= (str ch) delimiter) (not in-quotes))
-           (recur (inc pos)
-                  #?(:clj (StringBuilder.)
-                     :cljs (goog.string/StringBuffer.))
-                  in-quotes
-                  (conj values (str/trim (.toString current))))
+                          ;; Delimiter outside quotes - split here
+                          (and (= (str ch) delimiter) (not in-quotes))
+                          (delimiter-char pos current in-quotes values)
 
-           ;; Regular character
-           :else
-           (recur (inc pos)
-                  (doto current (.append ch))
-                  in-quotes
-                  values)))))))
+                          ;; Regular character - append
+                          :else
+                          (regular-char pos current ch in-quotes values))]
+         (recur (:pos next-state)
+                (:current next-state)
+                (:in-quotes next-state)
+                (:values next-state)))))))
 
 
 ;; ============================================================================
@@ -250,6 +294,57 @@
 ;; Array Header Parsing
 ;; ============================================================================
 
+(defn- bracket-positions
+  "Finds bracket positions in array header line.
+
+  Returns map with {:open-bracket, :close-bracket}.
+  Throws if brackets not found."
+  [line]
+  (let [open-bracket (str/index-of line "[")
+        close-bracket (str/index-of line "]")]
+    (when (or (nil? open-bracket) (nil? close-bracket))
+      (throw (ex-info "Array header must contain bracket segment with length"
+                      {:type :invalid-array-header
+                       :line line
+                       :suggestion "Add array length in brackets: key[N]: values"
+                       :examples ["tags[3]: a,b,c" "[2]{id,name}:" "items[5]:"]})))
+    {:open-bracket open-bracket
+     :close-bracket close-bracket}))
+
+
+(defn- key-prefix
+  "Extracts optional key prefix before opening bracket.
+
+  Returns trimmed key string or nil if no key present."
+  [line open-bracket]
+  (when (> open-bracket 0)
+    (str/trim (subs line 0 open-bracket))))
+
+
+(defn- field-list
+  "Extracts optional field list from brace segment.
+
+  Returns vector of field names or nil if no braces found."
+  [after-bracket]
+  (let [open-brace (str/index-of after-bracket "{")
+        close-brace (str/index-of after-bracket "}")]
+    (when (and open-brace close-brace)
+      (->> (subs after-bracket (inc open-brace) close-brace)
+           (#(str/split % comma-pattern))
+           (mapv str/trim)))))
+
+
+(defn- inline-values
+  "Extracts optional inline values after colon.
+
+  Returns trimmed inline value string or nil if none present."
+  [after-fields]
+  (when-let [colon-pos (str/index-of after-fields ":")]
+    (some-> (subs after-fields (inc colon-pos))
+            str/trim
+            not-empty)))
+
+
 (defn array-header-line
   "Parses an array header line.
 
@@ -271,45 +366,20 @@
     (parse-array-header-line \"[3]: a,b,c\")
     => {:length 3 :delimiter \",\" :inline-values \"a,b,c\" ...}"
   [line]
-  (let [;; Find bracket segment
-        open-bracket (str/index-of line "[")
-        close-bracket (str/index-of line "]")]
-    (when (or (nil? open-bracket) (nil? close-bracket))
-      (throw (ex-info "Array header must contain bracket segment with length"
-                      {:type :invalid-array-header
-                       :line line
-                       :suggestion "Add array length in brackets: key[N]: values"
-                       :examples ["tags[3]: a,b,c" "[2]{id,name}:" "items[5]:"]})))
-    (let [;; Extract key prefix (before [)
-            key-part (when (> open-bracket 0)
-                       (str/trim (subs line 0 open-bracket)))
-            ;; Parse bracket segment
-            bracket-content (subs line (inc open-bracket) close-bracket)
-            bracket-info (bracket-segment bracket-content)
-            ;; Extract content after ]
-            after-bracket (subs line (inc close-bracket))
-            ;; Check for field list {field1,field2}
-            open-brace (str/index-of after-bracket "{")
-            close-brace (str/index-of after-bracket "}")
-            fields (when (and open-brace close-brace)
-                     (->> (subs after-bracket (inc open-brace) close-brace)
-                          (#(str/split % comma-pattern))
-                          (mapv str/trim)))
-            ;; Extract content after fields (or after ])
-            after-fields (if fields
-                           (subs after-bracket (inc close-brace))
-                           after-bracket)
-            ;; Check for colon and inline values
-            colon-pos (str/index-of after-fields ":")
-            inline-values (some-> colon-pos
-                                  inc
-                                  (#(subs after-fields %))
-                                  str/trim
-                                  not-empty)]
-        (cond-> bracket-info
-          key-part (assoc :key key-part)
-          fields (assoc :fields fields)
-          inline-values (assoc :inline-values inline-values)))))
+  (let [{:keys [open-bracket close-bracket]} (bracket-positions line)
+        key-part (key-prefix line open-bracket)
+        bracket-content (subs line (inc open-bracket) close-bracket)
+        bracket-info (bracket-segment bracket-content)
+        after-bracket (subs line (inc close-bracket))
+        fields (field-list after-bracket)
+        after-fields (if fields
+                       (subs after-bracket (inc (str/index-of after-bracket "}")))
+                       after-bracket)
+        inline-vals (inline-values after-fields)]
+    (cond-> bracket-info
+      key-part (assoc :key key-part)
+      fields (assoc :fields fields)
+      inline-vals (assoc :inline-values inline-vals))))
 
 
 ;; ============================================================================

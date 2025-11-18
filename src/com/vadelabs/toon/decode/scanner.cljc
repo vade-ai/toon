@@ -95,6 +95,49 @@
                      :valid-indents (vec (map #(* % indent-size) (range 0 5)))}))))
 
 
+(defn- raw-lines
+  "Splits input into raw lines.
+
+  Returns vector of line strings."
+  [input]
+  (if (empty? input)
+    []
+    (str/split input newline-pattern -1)))
+
+
+(defn- line-metadata
+  "Computes metadata for a single line.
+
+  Returns map with {:indent, :depth, :content}."
+  [line indent-size]
+  (let [indent (count-leading-spaces line)
+        depth (quot indent indent-size)
+        content (str/triml line)]
+    {:indent indent
+     :depth depth
+     :content content}))
+
+
+(defn- process-blank-line
+  "Processes a blank line.
+
+  Returns updated accumulator with blank line tracked."
+  [line-num indent depth lines blank-lines]
+  {:lines lines
+   :blank-lines (conj blank-lines (blank-line-info line-num indent depth))})
+
+
+(defn- process-content-line
+  "Processes a content line with validation.
+
+  Returns updated accumulator with parsed line added."
+  [line line-num indent depth content indent-size strict lines blank-lines]
+  (when strict
+    (validate-indentation-strict line line-num indent indent-size))
+  {:lines (conj lines (parsed-line line depth indent content line-num))
+   :blank-lines blank-lines})
+
+
 (defn to-parsed-lines
   "Parses TOON text into structured lines.
 
@@ -117,34 +160,22 @@
   ([input indent-size]
    (to-parsed-lines input indent-size true))
   ([input indent-size strict]
-   (let [;; Split on newlines, preserving empty strings (use -1 limit)
-         raw-lines (if (empty? input)
-                     []
-                     (str/split input newline-pattern -1))]
-     (loop [remaining raw-lines
-            line-num 1
-            lines []
-            blank-lines []]
-       (if (empty? remaining)
-         (scan-result lines blank-lines)
-         (let [line (first remaining)
-               indent (count-leading-spaces line)
-               depth (quot indent indent-size)
-               content (str/triml line)]
-           (if (blank-line? line)
-             ;; Blank line: track separately
-             (recur (rest remaining)
-                    (inc line-num)
-                    lines
-                    (conj blank-lines (blank-line-info line-num indent depth)))
-             ;; Content line: validate and parse
-             (do
-               (when strict
-                 (validate-indentation-strict line line-num indent indent-size))
-               (recur (rest remaining)
-                      (inc line-num)
-                      (conj lines (parsed-line line depth indent content line-num))
-                      blank-lines)))))))))
+   (loop [remaining (raw-lines input)
+          line-num 1
+          lines []
+          blank-lines []]
+     (if (empty? remaining)
+       (scan-result lines blank-lines)
+       (let [line (first remaining)
+             {:keys [indent depth content]} (line-metadata line indent-size)
+             result (if (blank-line? line)
+                      (process-blank-line line-num indent depth lines blank-lines)
+                      (process-content-line line line-num indent depth content
+                                          indent-size strict lines blank-lines))]
+         (recur (rest remaining)
+                (inc line-num)
+                (:lines result)
+                (:blank-lines result)))))))
 
 
 ;; ============================================================================
