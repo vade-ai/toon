@@ -14,6 +14,15 @@
 
 
 ;; ============================================================================
+;; Constants
+;; ============================================================================
+
+(def ^:private empty-array-pattern
+  "Regex pattern for matching empty array notation [0]."
+  #"^\[0[,\t|]?\]$")
+
+
+;; ============================================================================
 ;; Root Dispatchers
 ;; ============================================================================
 
@@ -74,7 +83,7 @@
          (cond
            ;; Empty array at root: [0]
            (and (str/starts-with? (str/trim content) "[")
-                (re-matches #"^\[0[,\t|]?\]$" (str/trim content)))
+                (re-matches empty-array-pattern (str/trim content)))
            []
 
            ;; Array header at root (no key before bracket)

@@ -28,6 +28,19 @@
 
 
 ;; ============================================================================
+;; Constants
+;; ============================================================================
+
+(def ^:private leading-spaces-pattern
+  "Regex pattern for matching leading spaces."
+  #"^( *)")
+
+(def ^:private newline-pattern
+  "Regex pattern for splitting on newlines."
+  #"\n")
+
+
+;; ============================================================================
 ;; Line Scanning
 ;; ============================================================================
 
@@ -36,7 +49,7 @@
 
   Returns number of spaces before first non-space character."
   [s]
-  (-> (re-find #"^( *)" s)
+  (-> (re-find leading-spaces-pattern s)
       second
       count))
 
@@ -107,7 +120,7 @@
    (let [;; Split on newlines, preserving empty strings (use -1 limit)
          raw-lines (if (empty? input)
                      []
-                     (str/split input #"\n" -1))]
+                     (str/split input newline-pattern -1))]
      (loop [remaining raw-lines
             line-num 1
             lines []

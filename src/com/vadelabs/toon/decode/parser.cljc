@@ -15,6 +15,10 @@
   "Regex pattern for numeric literals (integers and decimals)."
   #"^-?\d+(\.\d+)?$")
 
+(def ^:private comma-pattern
+  "Regex pattern for splitting on commas."
+  #",")
+
 
 ;; ============================================================================
 ;; String Literal Parsing
@@ -289,7 +293,7 @@
             close-brace (str/index-of after-bracket "}")
             fields (when (and open-brace close-brace)
                      (->> (subs after-bracket (inc open-brace) close-brace)
-                          (#(str/split % #","))
+                          (#(str/split % comma-pattern))
                           (mapv str/trim)))
             ;; Extract content after fields (or after ])
             after-fields (if fields
