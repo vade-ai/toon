@@ -15,6 +15,41 @@
 
 
 ;; ============================================================================
+;; Validation Helpers
+;; ============================================================================
+
+(defn- validate-array-length!
+  "Validates array length matches header specification in strict mode.
+
+  Parameters:
+    - expected: Expected length from header
+    - actual: Actual count of items/rows
+    - strict: Enable validation (throws if mismatch)
+    - array-type: Type identifier for error message (:inline, :tabular, :list)
+
+  Throws:
+    ex-info with :array-length-mismatch type if validation fails"
+  [expected actual strict array-type]
+  (when (and strict (not= actual expected))
+    (let [type-suffix (case array-type
+                        :tabular " rows"
+                        :list " items"
+                        " items")
+          header-fix (if (= array-type :tabular)
+                       (str "[" actual "]{...}")
+                       (str "[" actual "]"))
+          type-key (case array-type
+                     :tabular :tabular-array-length-mismatch
+                     :list :list-array-length-mismatch
+                     :array-length-mismatch)]
+      (throw (ex-info (str "Array length mismatch: header specifies " expected type-suffix " but found " actual)
+                      {:type type-key
+                       :expected expected
+                       :actual actual
+                       :suggestion (str "Update header to " header-fix " or add " (- expected actual) " more" type-suffix)})))))
+
+
+;; ============================================================================
 ;; Inline Primitive Array Decoding
 ;; ============================================================================
 
@@ -34,20 +69,13 @@
     - Array length matches header"
   ([header-info]
    (inline-primitive-array header-info true))
-  ([header-info strict]
-   (let [{:keys [inline-values delimiter length]} header-info]
-     (if-not inline-values
-       []
-       (let [tokens (parser/delimited-values inline-values delimiter)
-             values (mapv #(parser/primitive-token % strict) tokens)]
-         (when (and strict (not= (count values) length))
-           (throw (ex-info (str "Array length mismatch: header specifies " length " items but found " (count values))
-                           {:type :array-length-mismatch
-                            :expected length
-                            :actual (count values)
-                            :values values
-                            :suggestion (str "Update header to [" (count values) "] or adjust values to match [" length "]")})))
-         values)))))
+  ([{:keys [inline-values delimiter length]} strict]
+   (if-not inline-values
+     []
+     (let [tokens (parser/delimited-values inline-values delimiter)
+           values (mapv #(parser/primitive-token % strict) tokens)]
+       (validate-array-length! length (count values) strict :inline)
+       values))))
 
 
 ;; ============================================================================
@@ -181,42 +209,31 @@
     - No extra rows after expected count"
   ([header-info cursor depth]
    (tabular-array header-info cursor depth true))
-  ([header-info cursor depth strict]
-   (let [{:keys [fields delimiter length]} header-info]
-     (loop [remaining-cursor cursor
-            objects []
-            row-count 0]
-       (let [line (scanner/peek-at-depth remaining-cursor depth)]
-         (if-not line
-           ;; No more lines at depth
-           (do
-             (when (and strict (not= row-count length))
-               (throw (ex-info (str "Tabular array length mismatch: header specifies " length " rows but found " row-count)
-                               {:type :tabular-array-length-mismatch
-                                :expected length
-                                :actual row-count
-                                :suggestion (str "Update header to [" row-count "]{...} or add " (- length row-count) " more row(s)")})))
-             [objects remaining-cursor])
-           ;; Check if this is a data row or key-value line with look-ahead
-           (let [next-cursor (scanner/advance-cursor remaining-cursor)
-                 line-type (row-or-key-value? (:content line) delimiter next-cursor depth)]
-             (if (= line-type :key-value)
-               ;; End of rows (key-value line follows)
-               (do
-                 (when (and strict (not= row-count length))
-                   (throw (ex-info (str "Tabular array length mismatch: header specifies " length " rows but found " row-count)
-                                   {:type :tabular-array-length-mismatch
-                                    :expected length
-                                    :actual row-count
-                                    :suggestion (str "Update header to [" row-count "]{...} or add " (- length row-count) " more row(s)")})))
-                 [objects remaining-cursor])
-               ;; Parse data row
-               (let [values (parse-tabular-row (:content line) delimiter strict)
-                     obj (zipmap fields values)
-                     new-cursor (scanner/advance-cursor remaining-cursor)]
-                 (recur new-cursor
-                        (conj objects obj)
-                        (inc row-count)))))))))))
+  ([{:keys [fields delimiter length]} cursor depth strict]
+   (loop [remaining-cursor cursor
+          objects []
+          row-count 0]
+     (let [line (scanner/peek-at-depth remaining-cursor depth)]
+       (if-not line
+         ;; No more lines at depth
+         (do
+           (validate-array-length! length row-count strict :tabular)
+           [objects remaining-cursor])
+         ;; Check if this is a data row or key-value line with look-ahead
+         (let [next-cursor (scanner/advance-cursor remaining-cursor)
+               line-type (row-or-key-value? (:content line) delimiter next-cursor depth)]
+           (if (= line-type :key-value)
+             ;; End of rows (key-value line follows)
+             (do
+               (validate-array-length! length row-count strict :tabular)
+               [objects remaining-cursor])
+             ;; Parse data row
+             (let [values (parse-tabular-row (:content line) delimiter strict)
+                   obj (zipmap fields values)
+                   new-cursor (scanner/advance-cursor remaining-cursor)]
+               (recur new-cursor
+                      (conj objects obj)
+                      (inc row-count))))))))))
 
 
 ;; ============================================================================
@@ -245,35 +262,24 @@
   Strict mode validates:
     - Item count matches header length
     - No extra items after expected count"
-  ([header-info cursor depth strict list-item-fn]
-   (let [{:keys [length delimiter]} header-info]
-     (loop [remaining-cursor cursor
-            items []
-            item-count 0]
-       (let [line (scanner/peek-at-depth remaining-cursor depth)]
-         (if-not line
-           ;; No more lines at depth
+  ([{:keys [length delimiter]} cursor depth strict list-item-fn]
+   (loop [remaining-cursor cursor
+          items []
+          item-count 0]
+     (let [line (scanner/peek-at-depth remaining-cursor depth)]
+       (if-not line
+         ;; No more lines at depth
+         (do
+           (validate-array-length! length item-count strict :list)
+           [items remaining-cursor])
+         ;; Check if line starts with list marker
+         (if-not (str/starts-with? (:content line) const/list-item-prefix)
+           ;; No list marker: end of list
            (do
-             (when (and strict (not= item-count length))
-               (throw (ex-info (str "List array length mismatch: header specifies " length " items but found " item-count)
-                               {:type :list-array-length-mismatch
-                                :expected length
-                                :actual item-count
-                                :suggestion (str "Update header to [" item-count "] or add " (- length item-count) " more item(s)")})))
+             (validate-array-length! length item-count strict :list)
              [items remaining-cursor])
-           ;; Check if line starts with list marker
-           (if-not (str/starts-with? (:content line) const/list-item-prefix)
-             ;; No list marker: end of list
-             (do
-               (when (and strict (not= item-count length))
-                 (throw (ex-info (str "List array length mismatch: header specifies " length " items but found " item-count)
-                                 {:type :list-array-length-mismatch
-                                  :expected length
-                                  :actual item-count
-                                  :suggestion (str "Update header to [" item-count "] or add " (- length item-count) " more item(s)")})))
-               [items remaining-cursor])
-             ;; Decode list item using provided function
-             (let [[item new-cursor] (list-item-fn line remaining-cursor depth delimiter strict)]
-               (recur new-cursor
-                      (conj items item)
-                      (inc item-count))))))))))
+           ;; Decode list item using provided function
+           (let [[item new-cursor] (list-item-fn line remaining-cursor depth delimiter strict)]
+             (recur new-cursor
+                    (conj items item)
+                    (inc item-count)))))))))
