@@ -14,16 +14,7 @@
 ;; ============================================================================
 
 (defrecord LineWriter
-  [lines indent-string]
-
-  Object
-
-  (toString
-    [_]
-    ;; Join lines with newline, ensuring no trailing newline at end
-    (if (empty? lines)
-      ""
-      (str/join "\n" lines))))
+  [lines indent-string])
 
 
 (defn create
@@ -75,7 +66,10 @@
     String representation with lines joined by newlines.
     No trailing newline at the end."
   [^LineWriter writer]
-  (.toString writer))
+  (let [lines (:lines writer)]
+    (if (empty? lines)
+      ""
+      (str/join "\n" lines))))
 
 
 (defn line-count
