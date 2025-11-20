@@ -8,6 +8,31 @@ This library implements [TOON v2.0 specification](https://github.com/toon-format
 
 ## [Unreleased]
 
+## [2025.11.20-10] - 2025-11-20
+
+### Changed
+
+- **TOON v2.0 compliance** - Updated from v1.4 to v2.0 specification
+
+- **Code quality** - Extensive refactoring for better maintainability
+  - Extracted helper functions to simplify complex decoders and encoders
+  - Reduced function complexity through focused, single-purpose helpers
+  - Improved code organization in parser and scanner modules
+  - Pre-compiled regex patterns in parser
+  - Replaced lazy sequences with eager evaluation in encoders
+
+### Added
+
+- **Safety improvements**
+  - Depth limiting to prevent stack overflow in normalize function
+  - Validation for empty brackets and negative array lengths in parser
+  - Enhanced error messages with specific suggestions
+
+- **Test coverage** - Improved from 91.5% to 92.6% overall coverage
+  - Added tests for max-depth validation and exception metadata
+  - Added tests for parser edge cases (empty brackets, negative array lengths)
+  - 456 tests with 958 assertions
+
 ## [2025.11.12-5] - 2025-11-12
 
 ### Added
@@ -108,6 +133,7 @@ com.vadelabs/toon {:mvn/version "2025.11.05-43"}
 - [Reference Implementation (TypeScript)](https://github.com/toon-format/toon)
 - [Other Implementations](https://github.com/toon-format/toon#other-implementations)
 
+[2025.11.20-10]: https://github.com/vadelabs/toon/releases/tag/v2025.11.20-10
 [2025.11.12-5]: https://github.com/vadelabs/toon/releases/tag/v2025.11.12-5
 [2025.11.11-3]: https://github.com/vadelabs/toon/releases/tag/v2025.11.11-3
 [2025.11.05-43]: https://github.com/vadelabs/toon/releases/tag/v2025.11.05-43

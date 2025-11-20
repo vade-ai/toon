@@ -239,6 +239,22 @@
           (parser/bracket-segment "abc")))))
 
 
+(deftest parse-empty-bracket-segment-test
+  (testing "Throw on empty bracket segment"
+    (is (thrown-with-msg?
+          #?(:clj Exception :cljs js/Error)
+          #"Array length cannot be empty"
+          (parser/bracket-segment "")))))
+
+
+(deftest parse-negative-array-length-test
+  (testing "Throw on negative array length"
+    (is (thrown-with-msg?
+          #?(:clj Exception :cljs js/Error)
+          #"Array length must be non-negative"
+          (parser/bracket-segment "-5")))))
+
+
 ;; ============================================================================
 ;; Array Header Parsing Tests
 ;; ============================================================================

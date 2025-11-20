@@ -267,3 +267,40 @@
               "fn" nil
               "keyword" "foo"}
              result)))))
+
+
+;; ============================================================================
+;; Depth Limit Tests
+;; ============================================================================
+
+(deftest max-depth-exceeded-test
+  (testing "Exceeding max depth throws exception"
+    (let [deeply-nested (reduce (fn [acc _] {:nested acc})
+                                {}
+                                (range 1005))]
+      (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo
+                               :cljs js/Error)
+                            #"Maximum nesting depth exceeded"
+                            (norm/normalize-value deeply-nested)))))
+
+  (testing "Custom max-depth parameter"
+    (let [nested {:a {:b {:c {:d {:e 1}}}}}]
+      ;; Should succeed with default depth (1000)
+      (is (map? (norm/normalize-value nested)))
+
+      ;; Should fail with max-depth of 3
+      (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo
+                               :cljs js/Error)
+                            #"Maximum nesting depth exceeded"
+                            (norm/normalize-value nested 0 3)))))
+
+  (testing "Exception contains helpful metadata"
+    (try
+      (norm/normalize-value {:a {:b {:c 1}}} 0 2)
+      (is false "Should have thrown exception")
+      (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
+        (let [data #?(:clj (ex-data e) :cljs (.-data e))]
+          (is (= :max-depth-exceeded (:type data)))
+          (is (number? (:depth data)))
+          (is (number? (:max-depth data)))
+          (is (string? (:suggestion data))))))))
