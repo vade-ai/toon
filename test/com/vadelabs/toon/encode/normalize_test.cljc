@@ -277,11 +277,11 @@
   (testing "Exceeding max depth throws exception"
     (let [deeply-nested (reduce (fn [acc _] {:nested acc})
                                 {}
-                                (range 1005))]
+                                (range 55))]
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo
                                :cljs js/Error)
                             #"Maximum nesting depth exceeded"
-                            (norm/normalize-value deeply-nested)))))
+                            (norm/normalize-value deeply-nested 0 50)))))
 
   (testing "Custom max-depth parameter"
     (let [nested {:a {:b {:c {:d {:e 1}}}}}]
