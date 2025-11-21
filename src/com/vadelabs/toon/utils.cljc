@@ -7,10 +7,8 @@
   - Value and key quoting logic"
   (:require
     [clojure.string :as str]
-    [com.vadelabs.toon.constants :as const])
-  #?(:cljs
-     (:require
-       [goog.string])))
+    [com.vadelabs.toon.constants :as const]
+    #?@(:cljs [[goog.string]])))
 
 
 ;; ============================================================================

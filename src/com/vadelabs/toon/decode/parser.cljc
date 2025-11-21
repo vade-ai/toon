@@ -178,7 +178,8 @@
 
   Returns complete values vector."
   [current values]
-  (if (zero? (.length current))
+  (if (zero? #?(:clj (.length current)
+                :cljs (.-length current)))
     values
     (conj values (str/trim (.toString current)))))
 

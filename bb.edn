@@ -12,8 +12,11 @@
                          org.clojure/test.check {:mvn/version "1.1.1"}}
            :task (exec 'cognitect.test-runner.api/test)}
 
-  test:all {:doc "Run the test suite with both Clojure and Babashka."
-            :depends [test test:bb]}
+  test:cljs {:doc "Run ClojureScript tests in Node.js."
+             :task (clojure "-M:test-cljs")}
+
+  test:all {:doc "Run the test suite with Clojure, Babashka, and ClojureScript."
+            :depends [test test:bb test:cljs]}
 
   ci {:doc "Run the CI pipeline of tests and build the JAR."
       :depends [test]
