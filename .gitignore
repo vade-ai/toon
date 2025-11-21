@@ -27,6 +27,7 @@
 /checkouts
 /classes
 /target
+cljs-test-runner-out/
 
 # Analysis and documentation files
 FINDINGS_SUMMARY.md
