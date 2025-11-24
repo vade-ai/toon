@@ -502,3 +502,80 @@
       (is (= {"users" [{"name" "Alice" "age" 30.0}
                        {"name" "Bob" "age" 25.0}]}
              stream-result)))))
+
+
+;; ============================================================================
+;; Streaming Equivalence Tests
+;; ============================================================================
+
+(deftest test-streaming-equivalence-simple-object
+  (testing "Streaming decode matches regular decode for simple object"
+    (let [input "name: Alice\nage: 30"
+          regular-result (toon/decode input)
+          stream-result (toon/events->value (toon/events input))]
+      (is (= regular-result stream-result)))))
+
+
+(deftest test-streaming-equivalence-nested-objects
+  (testing "Streaming decode matches regular decode for nested objects"
+    (let [input "user:\n  name: Alice\n  profile:\n    age: 30\n    active: true"
+          regular-result (toon/decode input)
+          stream-result (toon/events->value (toon/events input))]
+      (is (= regular-result stream-result)))))
+
+
+(deftest test-streaming-equivalence-mixed-structures
+  (testing "Streaming decode matches regular decode for mixed objects and arrays"
+    (let [input "user:\n  name: Alice\n  tags[2]: dev,clojure\n  scores[3]: 85,92,78"
+          regular-result (toon/decode input)
+          stream-result (toon/events->value (toon/events input))]
+      (is (= regular-result stream-result)))))
+
+
+(deftest test-streaming-equivalence-list-array-with-objects
+  (testing "Streaming decode matches regular decode for list array with objects"
+    (let [input "[2]:\n  - id: 1\n    name: Alice\n  - id: 2\n    name: Bob"
+          regular-result (toon/decode input)
+          stream-result (toon/events->value (toon/events input))]
+      (is (= regular-result stream-result)))))
+
+
+(deftest test-streaming-equivalence-root-primitive-number
+  (testing "Streaming decode matches regular decode for root primitive number"
+    (let [input "42"
+          regular-result (toon/decode input)
+          stream-result (toon/events->value (toon/events input))]
+      (is (= regular-result stream-result))
+      (is (= 42.0 stream-result)))))
+
+
+(deftest test-streaming-equivalence-root-primitive-string
+  (testing "Streaming decode matches regular decode for root primitive string"
+    (let [input "hello world"
+          regular-result (toon/decode input)
+          stream-result (toon/events->value (toon/events input))]
+      (is (= regular-result stream-result))
+      (is (= "hello world" stream-result)))))
+
+
+(deftest test-streaming-equivalence-root-primitive-boolean
+  (testing "Streaming decode matches regular decode for root primitive boolean"
+    (let [input-true "true"
+          input-false "false"
+          regular-true (toon/decode input-true)
+          stream-true (toon/events->value (toon/events input-true))
+          regular-false (toon/decode input-false)
+          stream-false (toon/events->value (toon/events input-false))]
+      (is (= regular-true stream-true))
+      (is (true? stream-true))
+      (is (= regular-false stream-false))
+      (is (false? stream-false)))))
+
+
+(deftest test-streaming-equivalence-root-primitive-null
+  (testing "Streaming decode matches regular decode for root primitive null"
+    (let [input "null"
+          regular-result (toon/decode input)
+          stream-result (toon/events->value (toon/events input))]
+      (is (= regular-result stream-result))
+      (is (nil? stream-result)))))
