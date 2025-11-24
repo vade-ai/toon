@@ -4,6 +4,7 @@
     [com.vadelabs.toon.decode.keys :as keys]
     [com.vadelabs.toon.decode.scanner :as scanner]
     [com.vadelabs.toon.decode.stream :as stream]
+    [com.vadelabs.toon.decode.value-builder :as value-builder]
     [com.vadelabs.toon.encode.encoders :as encoders]
     [com.vadelabs.toon.encode.normalize :as norm]
     [com.vadelabs.toon.encode.writer :as writer]))
@@ -89,8 +90,10 @@
         (keys/expand (:strict opts) (:expand-paths opts)))))
 
 
-(defn decode-stream-sync
+(defn events
   "Decode TOON into lazy sequence of parse events (memory-efficient).
+
+  Following Stuart Sierra's naming: pure function returning events uses a noun.
 
   Instead of building complete value trees, emits parse events that can be
   consumed incrementally. Useful for processing large TOON documents without
@@ -112,7 +115,7 @@
       - {:type :primitive :value <value>}
 
   Examples:
-    (decode-stream-sync \"name: Alice\\nage: 30\")
+    (events \"name: Alice\\nage: 30\")
     ;=> ({:type :start-object}
          {:type :key :key \"name\"}
          {:type :primitive :value \"Alice\"}
@@ -120,20 +123,22 @@
          {:type :primitive :value 30}
          {:type :end-object})
 
-    (decode-stream-sync \"[3]: a,b,c\")
+    (events \"[3]: a,b,c\")
     ;=> ({:type :start-array}
          {:type :primitive :value \"a\"}
          {:type :primitive :value \"b\"}
          {:type :primitive :value \"c\"}
          {:type :end-array})
 
-  See also: decode-stream for async version"
+  See also: events-ch for async version, events->value to reconstruct"
   [input & [options]]
   (stream/decode-stream-sync input options))
 
 
-(defn decode-stream
+(defn events-ch
   "Decode TOON asynchronously into core.async channel of parse events.
+
+  Following Stuart Sierra's naming: function returns a channel (suffix -ch).
 
   Processes TOON content from either a sequence or async channel, emitting
   parse events to an output channel. Useful for streaming processing of
@@ -150,13 +155,13 @@
       - :buf-size - Channel buffer size (default: 32)
 
   Returns:
-    core.async channel of events (same format as decode-stream-sync)
+    core.async channel of events (same format as events function)
 
   Example:
     (require '[clojure.core.async :as async])
 
-    (let [events-ch (decode-stream \"name: Alice\\nage: 30\")]
-      (async/<!! (async/into [] events-ch)))
+    (let [ch (events-ch \"name: Alice\\nage: 30\")]
+      (async/<!! (async/into [] ch)))
     ;=> [{:type :start-object}
          {:type :key :key \"name\"}
          {:type :primitive :value \"Alice\"}
@@ -164,6 +169,46 @@
          {:type :primitive :value 30}
          {:type :end-object}]
 
-  See also: decode-stream-sync for synchronous lazy sequence version"
+  See also: events for synchronous lazy sequence, events->value to reconstruct"
   [source & [options]]
   (stream/decode-stream source options))
+
+
+(defn events->value
+  "Reconstruct value from event stream.
+
+  Takes a sequence of parse events (from decode-stream-sync or decode-stream)
+  and reconstructs the original data structure. Useful for custom event
+  processing workflows where you want to filter/transform events before
+  building the final value.
+
+  Parameters:
+    - events: Sequence or iterable of parse events
+
+  Returns:
+    Reconstructed value (map, vector, or primitive)
+
+  Example:
+    (let [input \"name: Alice\\nage: 30\"
+          events (decode-stream-sync input)
+          value (events->value events)]
+      value)
+    ;=> {\"name\" \"Alice\", \"age\" 30}
+
+  Example with filtering:
+    (let [input \"name: Alice\\nage: 30\\ncity: NYC\"
+          events (decode-stream-sync input)
+          ;; Filter out the 'city' field
+          filtered (remove #(and (= :key (:type %))
+                                 (= \"city\" (:key %)))
+                           events)
+          value (events->value filtered)]
+      value)
+    ;=> {\"name\" \"Alice\", \"age\" 30}
+
+  Throws:
+    - ex-info on malformed event streams (unmatched brackets, missing keys, etc.)
+
+  See also: events, events-ch"
+  [events]
+  (value-builder/events->value events))
