@@ -5,12 +5,16 @@
   Instead of building complete value trees, emits parse events that can be
   consumed incrementally."
   (:require
-    [com.vadelabs.toon.decode.event-builder :as event-builder]
-    [com.vadelabs.toon.decode.scanner :as scanner]
-    [clojure.string :as str]
     #?(:clj [clojure.core.async :as async]
-       :cljs [cljs.core.async :as async]))
-  #?(:cljs (:require-macros [cljs.core.async.macros :refer [go]])))
+       :cljs [cljs.core.async :as async])
+    #?(:clj [clojure.core.async.impl.protocols :as async-proto]
+       :cljs [cljs.core.async.impl.protocols :as async-proto])
+    [clojure.string :as str]
+    [com.vadelabs.toon.decode.event-builder :as event-builder]
+    [com.vadelabs.toon.decode.scanner :as scanner])
+  #?(:cljs
+     (:require-macros
+       [cljs.core.async.macros :refer [go]])))
 
 
 ;; ============================================================================
@@ -57,9 +61,7 @@
   ([lines]
    (decode-stream-sync lines {}))
   ([lines options]
-   (let [opts (merge {:indent 2
-                      :strict true}
-                     options)
+   (let [opts (merge {:indent 2 :strict true} options)
          input (if (string? lines) lines (str/join "\n" lines))
          cursor (-> input
                     (scanner/to-parsed-lines (:indent opts) (:strict opts))
@@ -75,12 +77,13 @@
    (defn decode-stream
      "Decode TOON lines asynchronously into core.async channel of events.
 
-     Processes TOON content from either a lazy sequence or async channel,
+     Processes TOON content from either a string, lazy sequence, or async channel,
      emitting parse events to an output channel.
 
      Parameters:
        - source: Either:
-         - Lazy sequence of strings (TOON lines)
+         - String in TOON format
+         - Sequence of strings (TOON lines)
          - core.async channel of strings
        - options: Optional map with keys:
          - :indent - Number of spaces per indentation level (default: 2)
@@ -115,17 +118,27 @@
             out-ch (async/chan (:buf-size opts))]
         (async/go
           (try
-            (let [;; Collect all lines first (needed for scanner)
-                  lines (if (satisfies? clojure.core.async.impl.protocols/ReadPort source)
-                          ;; Read from channel
+            ;; Normalize input to sequence of lines
+            (let [is-channel? (and (not (string? source))
+                                   (not (sequential? source)))
+                  lines (cond
+                          ;; String input - split into lines
+                          (string? source)
+                          (str/split-lines source)
+
+                          ;; Channel input - read all lines
+                          is-channel?
                           (async/<! (async/into [] source))
+
                           ;; Already a sequence
-                          source)
-                  ;; Generate events synchronously
-                  events (decode-stream-sync lines opts)]
-              ;; Emit events to channel
-              (doseq [event events]
+                          :else
+                          source)]
+              ;; Generate events synchronously
+              (doseq [event (decode-stream-sync lines opts)]
                 (async/>! out-ch event)))
+            (catch #?(:clj Exception :cljs js/Error) e
+              (println "Error in decode-stream:" e)
+              (throw e))
             (finally
               (async/close! out-ch))))
         out-ch))))
@@ -135,12 +148,13 @@
    (defn decode-stream
      "Decode TOON lines asynchronously into core.async channel of events.
 
-     Processes TOON content from either a lazy sequence or async channel,
+     Processes TOON content from either a string, lazy sequence, or async channel,
      emitting parse events to an output channel.
 
      Parameters:
        - source: Either:
-         - Lazy sequence of strings (TOON lines)
+         - String in TOON format
+         - Sequence of strings (TOON lines)
          - core.async channel of strings
        - options: Optional map with keys:
          - :indent - Number of spaces per indentation level (default: 2)
@@ -170,17 +184,26 @@
             out-ch (async/chan (:buf-size opts))]
         (go
           (try
-            (let [;; Collect all lines first (needed for scanner)
-                  lines (if (satisfies? cljs.core.async.impl.protocols/ReadPort source)
-                          ;; Read from channel
+            (let [is-channel? (and (not (string? source))
+                                   (not (sequential? source)))
+                  lines (cond
+                          ;; String input - split into lines
+                          (string? source)
+                          (str/split-lines source)
+
+                          ;; Channel input - read all lines
+                          is-channel?
                           (async/<! (async/into [] source))
+
                           ;; Already a sequence
-                          source)
-                  ;; Generate events synchronously
-                  events (decode-stream-sync lines opts)]
-              ;; Emit events to channel
-              (doseq [event events]
+                          :else
+                          source)]
+              ;; Generate events synchronously
+              (doseq [event (decode-stream-sync lines opts)]
                 (async/>! out-ch event)))
+            (catch js/Error e
+              (js/console.error "Error in decode-stream:" e)
+              (throw e))
             (finally
               (async/close! out-ch))))
         out-ch))))
