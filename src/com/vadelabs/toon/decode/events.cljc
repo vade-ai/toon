@@ -1,64 +1,17 @@
 (ns com.vadelabs.toon.decode.events
-  "Event types and builders for streaming TOON decode.
+  "Event types and utilities for streaming TOON decode.
 
-  Events represent parse actions instead of building full value trees.
+  Events are simple maps with a :type key. Prefer using maps directly:
+
+    {:type :start-object}
+    {:type :end-object}
+    {:type :start-array :length 3}
+    {:type :end-array}
+    {:type :key :key \"field-name\"}
+    {:type :key :key \"field-name\" :was-quoted true}
+    {:type :primitive :value <value>}
+
   This enables memory-efficient processing of large TOON documents.")
-
-
-;; ============================================================================
-;; Event Type Constructors
-;; ============================================================================
-
-(defn start-object
-  "Event emitted when object parsing begins."
-  []
-  {:type :start-object})
-
-
-(defn end-object
-  "Event emitted when object parsing completes."
-  []
-  {:type :end-object})
-
-
-(defn start-array
-  "Event emitted when array parsing begins.
-
-  Parameters:
-    - length: Array length (for feature parity with TypeScript implementation)"
-  [length]
-  {:type :start-array
-   :length length})
-
-
-(defn end-array
-  "Event emitted when array parsing completes."
-  []
-  {:type :end-array})
-
-
-(defn key-event
-  "Event emitted when object key is encountered.
-
-  Parameters:
-    - k: Key string
-    - was-quoted: Optional boolean indicating if key was quoted in source (default: false)"
-  ([k]
-   (key-event k false))
-  ([k was-quoted]
-   {:type :key
-    :key k
-    :was-quoted was-quoted}))
-
-
-(defn primitive
-  "Event emitted for primitive values.
-
-  Parameters:
-    - value: Primitive value (string, number, boolean, nil)"
-  [value]
-  {:type :primitive
-   :value value})
 
 
 ;; ============================================================================
@@ -66,63 +19,119 @@
 ;; ============================================================================
 
 (defn start-object?
+  "Returns true if event is start-object."
   [event]
   (= :start-object (:type event)))
 
 
 (defn end-object?
+  "Returns true if event is end-object."
   [event]
   (= :end-object (:type event)))
 
 
 (defn start-array?
+  "Returns true if event is start-array."
   [event]
   (= :start-array (:type event)))
 
 
 (defn end-array?
+  "Returns true if event is end-array."
   [event]
   (= :end-array (:type event)))
 
 
 (defn key-event?
+  "Returns true if event is a key event."
   [event]
   (= :key (:type event)))
 
 
 (defn primitive?
+  "Returns true if event is a primitive value."
   [event]
   (= :primitive (:type event)))
 
 
 ;; ============================================================================
-;; Event Utilities
+;; Event Accessors
 ;; ============================================================================
 
 (defn value
   "Extract value from primitive event."
   [event]
-  (when (primitive? event)
-    (:value event)))
+  (:value event))
 
 
 (defn event-key
   "Extract key from key event."
   [event]
-  (when (key-event? event)
-    (:key event)))
+  (:key event))
 
 
 (defn was-quoted
-  "Extract was-quoted flag from key event.
-  Returns true if the key was quoted in the original TOON source, false otherwise."
+  "Returns true if key was quoted in original TOON source.
+  Returns false/nil for non-key events or unquoted keys."
   [event]
-  (when (key-event? event)
-    (:was-quoted event)))
+  (:was-quoted event))
 
 
 (defn length
-  "Extract length from start-array event."
+  "Extract length from start-array event.
+  Returns nil for non-array events."
   [event]
-  (when (start-array? event)
-    (:length event)))
+  (:length event))
+
+
+;; ============================================================================
+;; Event Constructors
+;; These are kept for convenience but direct maps are preferred.
+;; ============================================================================
+
+(defn start-object
+  "Create start-object event.
+  Prefer: {:type :start-object}"
+  []
+  {:type :start-object})
+
+
+(defn end-object
+  "Create end-object event.
+  Prefer: {:type :end-object}"
+  []
+  {:type :end-object})
+
+
+(defn start-array
+  "Create start-array event with length.
+  Prefer: {:type :start-array :length n}"
+  [length]
+  {:type :start-array :length length})
+
+
+(defn end-array
+  "Create end-array event.
+  Prefer: {:type :end-array}"
+  []
+  {:type :end-array})
+
+
+(defn key-event
+  "Create key event.
+  Prefer: {:type :key :key k} or {:type :key :key k :was-quoted true}
+
+  Note: :was-quoted is only included when true (matches TypeScript API)."
+  ([k]
+   {:type :key :key k})
+  ([k was-quoted]
+   (if was-quoted
+     {:type :key :key k :was-quoted true}
+     {:type :key :key k})))
+
+
+(defn primitive
+  "Create primitive event.
+  Prefer: {:type :primitive :value v}"
+  [value]
+  {:type :primitive :value value})
