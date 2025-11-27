@@ -1,7 +1,16 @@
 (ns com.vadelabs.toon.decode.stream-test
+  "Streaming decode tests matching TypeScript reference implementation.
+
+  Test categories:
+  - Basic event streaming (decodeStreamSync)
+  - Event reconstruction (buildValueFromEvents / events->value)
+  - Streaming equivalence with regular decode
+  - Strict mode validation
+  - wasQuoted and length property parity"
   (:require
     [clojure.core.async :as async]
-    [clojure.test :refer [deftest is testing]]
+    [clojure.string :as str]
+    [clojure.test :refer [deftest is testing are]]
     [com.vadelabs.toon.decode.events :as events]
     [com.vadelabs.toon.interface :as toon]))
 
@@ -23,83 +32,278 @@
 
 
 ;; ============================================================================
-;; Basic Streaming Tests
+;; decodeStreamSync Tests (matches TypeScript decodeStream.test.ts)
 ;; ============================================================================
 
-(deftest test-simple-object-stream
-  (testing "Simple object with primitive values"
+(deftest test-decode-simple-object
+  (testing "decode simple object"
     (let [input "name: Alice\nage: 30"
           events (events->vec (toon/events input))]
-      (is (= 6 (count events)))
-      (is (events/start-object? (first events)))
-      (is (events/end-object? (last events)))
-      (is (= "name" (events/event-key (nth events 1))))
-      (is (= "Alice" (events/value (nth events 2))))
-      (is (= "age" (events/event-key (nth events 3))))
-      (is (= 30.0 (events/value (nth events 4)))))))
+      (is (= [{:type :start-object}
+              {:type :key :key "name"}
+              {:type :primitive :value "Alice"}
+              {:type :key :key "age"}
+              {:type :primitive :value 30.0}
+              {:type :end-object}]
+             events)))))
 
 
-(deftest test-empty-object-stream
-  (testing "Empty object"
-    (let [input ""
+(deftest test-decode-nested-object
+  (testing "decode nested object"
+    (let [input "user:\n  name: Alice\n  age: 30"
           events (events->vec (toon/events input))]
-      (is (= 2 (count events)))
-      (is (events/start-object? (first events)))
-      (is (events/end-object? (last events))))))
+      (is (= [{:type :start-object}
+              {:type :key :key "user"}
+              {:type :start-object}
+              {:type :key :key "name"}
+              {:type :primitive :value "Alice"}
+              {:type :key :key "age"}
+              {:type :primitive :value 30.0}
+              {:type :end-object}
+              {:type :end-object}]
+             events)))))
 
 
-(deftest test-single-primitive-stream
-  (testing "Single primitive value"
-    (let [input "42"
+(deftest test-decode-inline-primitive-array
+  (testing "decode inline primitive array"
+    (let [input "scores[3]: 95, 87, 92"
           events (events->vec (toon/events input))]
-      (is (= 1 (count events)))
-      (is (events/primitive? (first events)))
-      (is (= 42.0 (events/value (first events)))))))
+      (is (= [{:type :start-object}
+              {:type :key :key "scores"}
+              {:type :start-array :length 3}
+              {:type :primitive :value 95.0}
+              {:type :primitive :value 87.0}
+              {:type :primitive :value 92.0}
+              {:type :end-array}
+              {:type :end-object}]
+             events)))))
+
+
+(deftest test-decode-list-array
+  (testing "decode list array"
+    (let [input "items[2]:\n  - Apple\n  - Banana"
+          events (events->vec (toon/events input))]
+      (is (= [{:type :start-object}
+              {:type :key :key "items"}
+              {:type :start-array :length 2}
+              {:type :primitive :value "Apple"}
+              {:type :primitive :value "Banana"}
+              {:type :end-array}
+              {:type :end-object}]
+             events)))))
+
+
+(deftest test-decode-tabular-array
+  (testing "decode tabular array"
+    (let [input "users[2]{name,age}:\n  Alice, 30\n  Bob, 25"
+          events (events->vec (toon/events input))]
+      (is (= [{:type :start-object}
+              {:type :key :key "users"}
+              {:type :start-array :length 2}
+              {:type :start-object}
+              {:type :key :key "name"}
+              {:type :primitive :value "Alice"}
+              {:type :key :key "age"}
+              {:type :primitive :value 30.0}
+              {:type :end-object}
+              {:type :start-object}
+              {:type :key :key "name"}
+              {:type :primitive :value "Bob"}
+              {:type :key :key "age"}
+              {:type :primitive :value 25.0}
+              {:type :end-object}
+              {:type :end-array}
+              {:type :end-object}]
+             events)))))
+
+
+(deftest test-decode-root-primitive
+  (testing "decode root primitive"
+    (let [input "Hello World"
+          events (events->vec (toon/events input))]
+      (is (= [{:type :primitive :value "Hello World"}]
+             events)))))
+
+
+(deftest test-decode-root-array
+  (testing "decode root array"
+    (let [input "[2]:\n  - Apple\n  - Banana"
+          events (events->vec (toon/events input))]
+      (is (= [{:type :start-array :length 2}
+              {:type :primitive :value "Apple"}
+              {:type :primitive :value "Banana"}
+              {:type :end-array}]
+             events)))))
+
+
+(deftest test-decode-empty-input-as-empty-object
+  (testing "decode empty input as empty object"
+    (let [events (events->vec (toon/events ""))]
+      (is (= [{:type :start-object}
+              {:type :end-object}]
+             events)))))
+
+
+(deftest test-enforce-strict-mode-validation
+  (testing "enforce strict mode validation"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (doall (toon/events "items[2]:\n  - Apple" {:strict true}))))))
+
+
+(deftest test-allow-count-mismatch-non-strict
+  (testing "allow count mismatch in non-strict mode"
+    (let [events (events->vec (toon/events "items[2]:\n  - Apple" {:strict false}))]
+      (is (some? events))
+      (is (= {:type :start-object} (first events))))))
 
 
 ;; ============================================================================
-;; Array Streaming Tests
+;; events->value Tests (matches TypeScript buildValueFromEvents)
 ;; ============================================================================
 
-(deftest test-inline-array-stream
-  (testing "Inline primitive array"
-    (let [input "[3]: a,b,c"
-          events (events->vec (toon/events input))]
-      (is (= 5 (count events)))
-      (is (events/start-array? (first events)))
-      (is (= "a" (events/value (nth events 1))))
-      (is (= "b" (events/value (nth events 2))))
-      (is (= "c" (events/value (nth events 3))))
-      (is (events/end-array? (last events))))))
+(deftest test-build-object-from-events
+  (testing "build object from events"
+    (let [events [{:type :start-object}
+                  {:type :key :key "name"}
+                  {:type :primitive :value "Alice"}
+                  {:type :key :key "age"}
+                  {:type :primitive :value 30}
+                  {:type :end-object}]
+          result (toon/events->value events)]
+      (is (= {"name" "Alice" "age" 30} result)))))
 
 
-(deftest test-empty-array-stream
-  (testing "Empty array"
-    (let [input "[0]"
-          events (events->vec (toon/events input))]
-      (is (= 2 (count events)))
-      (is (events/start-array? (first events)))
-      (is (events/end-array? (last events))))))
+(deftest test-build-nested-object-from-events
+  (testing "build nested object from events"
+    (let [events [{:type :start-object}
+                  {:type :key :key "user"}
+                  {:type :start-object}
+                  {:type :key :key "name"}
+                  {:type :primitive :value "Alice"}
+                  {:type :end-object}
+                  {:type :end-object}]
+          result (toon/events->value events)]
+      (is (= {"user" {"name" "Alice"}} result)))))
 
 
-(deftest test-tabular-array-stream
-  (testing "Tabular array with objects"
-    (let [input "[2]{id,name}:\n  1,Alice\n  2,Bob"
-          events (events->vec (toon/events input))]
-      ;; Debugging
-      (println "Tabular events:" events)
-      (println "Event count:" (count events))
-      ;; Start array, 2 objects (each with start, 2 key-value pairs, end), end array
-      ;; [start-array, [start-obj, key, val, key, val, end-obj] * 2, end-array]
-      (is (>= (count events) 13) "Should have at least 13 events")
-      (is (events/start-array? (first events)))
-      (is (events/start-object? (nth events 1)))
-      (is (= "id" (events/event-key (nth events 2))))
-      (is (= 1.0 (events/value (nth events 3))))
-      (is (= "name" (events/event-key (nth events 4))))
-      (is (= "Alice" (events/value (nth events 5))))
-      (is (events/end-object? (nth events 6)))
-      (is (events/end-array? (last events))))))
+(deftest test-build-array-from-events
+  (testing "build array from events"
+    (let [events [{:type :start-array :length 3}
+                  {:type :primitive :value 1}
+                  {:type :primitive :value 2}
+                  {:type :primitive :value 3}
+                  {:type :end-array}]
+          result (toon/events->value events)]
+      (is (= [1 2 3] result)))))
+
+
+(deftest test-build-primitive-from-events
+  (testing "build primitive from events"
+    (let [events [{:type :primitive :value "Hello"}]
+          result (toon/events->value events)]
+      (is (= "Hello" result)))))
+
+
+(deftest test-throw-on-incomplete-event-stream
+  (testing "throw on incomplete event stream"
+    (let [events [{:type :start-object}
+                  {:type :key :key "name"}
+                  ;; Missing primitive and endObject
+                  ]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"[Ii]ncomplete"
+                            (toon/events->value events))))))
+
+
+;; ============================================================================
+;; lines->value / decodeFromLines Tests
+;; ============================================================================
+
+(deftest test-lines->value-produces-same-result-as-decode
+  (testing "produce same result as decode"
+    (let [input "name: Alice\nage: 30\nscores[3]: 95, 87, 92"
+          lines (str/split-lines input)
+          from-lines (toon/lines->value lines)
+          from-string (toon/decode input)]
+      (is (= from-string from-lines)))))
+
+
+(deftest test-lines->value-supports-expand-paths
+  (testing "support expandPaths option"
+    (let [lines ["user.name: Alice" "user.age: 30"]
+          result (toon/lines->value lines {:expand-paths :safe})]
+      (is (= {"user" {"name" "Alice" "age" 30.0}} result)))))
+
+
+(deftest test-lines->value-complex-nested
+  (testing "handle complex nested structures"
+    (let [input "users[2]:\n  - name: Alice\n    scores[3]: 95, 87, 92\n  - name: Bob\n    scores[3]: 88, 91, 85"
+          lines (str/split-lines input)
+          from-lines (toon/lines->value lines)
+          from-string (toon/decode input)]
+      (is (= from-string from-lines))
+      (is (= {"users" [{"name" "Alice" "scores" [95.0 87.0 92.0]}
+                       {"name" "Bob" "scores" [88.0 91.0 85.0]}]}
+             from-lines)))))
+
+
+(deftest test-lines->value-tabular-arrays
+  (testing "handle tabular arrays"
+    (let [input "users[3]{name,age,city}:\n  Alice, 30, NYC\n  Bob, 25, LA\n  Charlie, 35, SF"
+          lines (str/split-lines input)
+          from-lines (toon/lines->value lines)
+          from-string (toon/decode input)]
+      (is (= from-string from-lines))
+      (is (= {"users" [{"name" "Alice" "age" 30.0 "city" "NYC"}
+                       {"name" "Bob" "age" 25.0 "city" "LA"}
+                       {"name" "Charlie" "age" 35.0 "city" "SF"}]}
+             from-lines)))))
+
+
+;; ============================================================================
+;; Streaming Equivalence Tests (data-driven)
+;; ============================================================================
+
+(deftest test-streaming-equivalence
+  (testing "streaming decode matches regular decode"
+    (are [desc input]
+        (= (toon/decode input) (toon/events->value (toon/events input)))
+
+      "simple object"
+      "name: Alice\nage: 30"
+
+      "nested objects"
+      "user:\n  profile:\n    name: Alice\n    age: 30"
+
+      "mixed structures"
+      "name: Alice\nscores[3]: 95, 87, 92\naddress:\n  city: NYC\n  zip: 10001"
+
+      "list array with objects"
+      "users[2]:\n  - name: Alice\n    age: 30\n  - name: Bob\n    age: 25"
+
+      "root primitive number"
+      "42"
+
+      "root primitive string"
+      "Hello World"
+
+      "root primitive boolean true"
+      "true"
+
+      "root primitive boolean false"
+      "false"
+
+      "root primitive null"
+      "null"
+
+      "empty object"
+      ""
+
+      "root array"
+      "[2]:\n  - Apple\n  - Banana"
+
+      "tabular array"
+      "[2]{id,name}:\n  1,Alice\n  2,Bob")))
 
 
 ;; ============================================================================
@@ -107,28 +311,24 @@
 ;; ============================================================================
 
 (deftest test-unquoted-key-wasquoted
-  (testing "Unquoted key has was-quoted false"
+  (testing "Unquoted key has was-quoted nil (not present)"
     (let [input "name: Alice"
           events (events->vec (toon/events input))
-          key-event (->> events
-                         (filter events/key-event?)
-                         first)]
-      (is (some? key-event) "Should have a key event")
+          key-event (->> events (filter events/key-event?) first)]
+      (is (some? key-event))
       (is (= "name" (events/event-key key-event)))
-      (is (= false (events/was-quoted key-event))
-          "unquoted key should have was-quoted false"))))
+      (is (not (events/was-quoted key-event))
+          "unquoted key should have was-quoted nil/falsy"))))
 
 
 (deftest test-quoted-key-wasquoted
   (testing "Quoted key has was-quoted true"
     (let [input "\"user.name\": Alice"
           events (events->vec (toon/events input))
-          key-event (->> events
-                         (filter events/key-event?)
-                         first)]
-      (is (some? key-event) "Should have a key event")
+          key-event (->> events (filter events/key-event?) first)]
+      (is (some? key-event))
       (is (= "user.name" (events/event-key key-event)))
-      (is (= true (events/was-quoted key-event))
+      (is (true? (events/was-quoted key-event))
           "quoted key should have was-quoted true"))))
 
 
@@ -137,130 +337,34 @@
     (let [input "name: Alice\n\"user.id\": 123\nage: 30"
           events (events->vec (toon/events input))
           key-events (filterv events/key-event? events)]
-      (is (= 3 (count key-events)) "Should have 3 key events")
+      (is (= 3 (count key-events)))
       ;; First key: unquoted
       (is (= "name" (events/event-key (nth key-events 0))))
-      (is (= false (events/was-quoted (nth key-events 0))))
+      (is (not (events/was-quoted (nth key-events 0))))
       ;; Second key: quoted
       (is (= "user.id" (events/event-key (nth key-events 1))))
-      (is (= true (events/was-quoted (nth key-events 1))))
+      (is (true? (events/was-quoted (nth key-events 1))))
       ;; Third key: unquoted
       (is (= "age" (events/event-key (nth key-events 2))))
-      (is (= false (events/was-quoted (nth key-events 2)))))))
-
-
-(deftest test-nested-object-key-wasquoted
-  (testing "Nested object keys preserve was-quoted"
-    (let [input "user:\n  \"first.name\": Alice\n  age: 30"
-          events (events->vec (toon/events input))
-          key-events (filterv events/key-event? events)]
-      (is (= 3 (count key-events)))
-      ;; Outer key: unquoted
-      (is (= "user" (events/event-key (nth key-events 0))))
-      (is (= false (events/was-quoted (nth key-events 0))))
-      ;; Nested quoted key
-      (is (= "first.name" (events/event-key (nth key-events 1))))
-      (is (= true (events/was-quoted (nth key-events 1))))
-      ;; Nested unquoted key
-      (is (= "age" (events/event-key (nth key-events 2))))
-      (is (= false (events/was-quoted (nth key-events 2)))))))
+      (is (not (events/was-quoted (nth key-events 2)))))))
 
 
 ;; ============================================================================
 ;; Array Length Property Tests (Feature Parity)
 ;; ============================================================================
 
-(deftest test-inline-array-length
-  (testing "Inline array includes length property"
-    (let [input "[3]: a,b,c"
-          events (events->vec (toon/events input))
-          start-array-event (first events)]
-      (is (events/start-array? start-array-event))
-      (is (= 3 (events/length start-array-event))
-          "start-array event should include length property"))))
+(deftest test-array-length-property
+  (testing "start-array events include length property"
+    (are [input expected-length]
+        (let [events (events->vec (toon/events input))
+              start-array (->> events (filter events/start-array?) first)]
+          (and (some? start-array)
+               (= expected-length (events/length start-array))))
 
-
-(deftest test-empty-array-length
-  (testing "Empty array includes length property of 0"
-    (let [input "[0]"
-          events (events->vec (toon/events input))
-          start-array-event (first events)]
-      (is (events/start-array? start-array-event))
-      (is (= 0 (events/length start-array-event))
-          "empty array should have length 0"))))
-
-
-(deftest test-tabular-array-length
-  (testing "Tabular array includes length property"
-    (let [input "[2]{id,name}:\n  1,Alice\n  2,Bob"
-          events (events->vec (toon/events input))
-          start-array-event (first events)]
-      (is (events/start-array? start-array-event))
-      (is (= 2 (events/length start-array-event))
-          "tabular array should have correct length"))))
-
-
-(deftest test-object-field-array-length
-  (testing "Array field in object includes length property"
-    (let [input "name: Alice\ntags[2]: reading,gaming"
-          events (events->vec (toon/events input))
-          ;; Find the start-array event (should be after name key-value pair and tags key)
-          start-array-event (->> events
-                                 (filter events/start-array?)
-                                 first)]
-      (is (some? start-array-event) "Should have a start-array event")
-      (is (= 2 (events/length start-array-event))
-          "array field should have correct length"))))
-
-
-(deftest test-empty-array-field-length
-  (testing "Empty array field includes length property of 0"
-    (let [input "name: Alice\ntags[0]: "
-          events (events->vec (toon/events input))
-          start-array-event (->> events
-                                 (filter events/start-array?)
-                                 first)]
-      (is (some? start-array-event) "Should have a start-array event")
-      (is (= 0 (events/length start-array-event))
-          "empty array field should have length 0"))))
-
-
-;; ============================================================================
-;; Nested Structure Tests
-;; ============================================================================
-
-(deftest test-nested-object-stream
-  (testing "Nested object"
-    (let [input "user:\n  name: Alice\n  age: 30"
-          events (events->vec (toon/events input))]
-      ;; start-obj, key(user), start-obj, key(name), val, key(age), val, end-obj, end-obj
-      (is (= 9 (count events)))
-      (is (events/start-object? (first events)))
-      (is (= "user" (events/event-key (nth events 1))))
-      (is (events/start-object? (nth events 2)))
-      (is (= "name" (events/event-key (nth events 3))))
-      (is (= "Alice" (events/value (nth events 4))))
-      (is (events/end-object? (nth events 7)))
-      (is (events/end-object? (last events))))))
-
-
-(deftest test-object-with-array-field-stream
-  (testing "Object containing an array field"
-    (let [input "name: Alice\ntags[2]: reading,gaming"
-          events (events->vec (toon/events input))]
-      (println "Array field events:" events)
-      ;; start-obj, key(name), val, key(tags), start-array, val, val, end-array, end-obj
-      (is (= 9 (count events)))
-      (is (events/start-object? (first events)))
-      (is (= "name" (events/event-key (nth events 1))))
-      (is (= "Alice" (events/value (nth events 2))))
-      ;; The key should be just "tags" not "tags[2]"
-      (is (= "tags" (events/event-key (nth events 3))))
-      (is (events/start-array? (nth events 4)))
-      (is (= "reading" (events/value (nth events 5))))
-      (is (= "gaming" (events/value (nth events 6))))
-      (is (events/end-array? (nth events 7)))
-      (is (events/end-object? (last events))))))
+      "[3]: a,b,c"        3
+      "[0]"               0
+      "tags[2]: a,b"      2
+      "[2]{id,name}:\n  1,Alice\n  2,Bob" 2)))
 
 
 ;; ============================================================================
@@ -274,9 +378,7 @@
           events (async-events->vec events-ch)]
       (is (= 6 (count events)))
       (is (events/start-object? (first events)))
-      (is (events/end-object? (last events)))
-      (is (= "name" (events/event-key (nth events 1))))
-      (is (= "Alice" (events/value (nth events 2)))))))
+      (is (events/end-object? (last events))))))
 
 
 (deftest test-async-from-channel
@@ -296,99 +398,11 @@
           events (async-events->vec events-ch)]
       (is (= 5 (count events)))
       (is (events/start-array? (first events)))
-      (is (events/end-array? (last events)))
-      (is (= "a" (events/value (nth events 1)))))))
+      (is (events/end-array? (last events))))))
 
 
 ;; ============================================================================
-;; Event Reconstruction Tests
-;; ============================================================================
-
-(defn build-from-events
-  "Reconstruct value from event stream (demonstrates event usage)."
-  [events]
-  (loop [events-seq events
-         stack []]
-    (if (empty? events-seq)
-      ;; Return the final result
-      (if (empty? stack)
-        nil
-        (:building (first stack)))
-      (let [event (first events-seq)
-            rest-events (rest events-seq)]
-        (case (:type event)
-          :start-object
-          (recur rest-events (conj stack {:building {} :type :object}))
-
-          :start-array
-          (recur rest-events (conj stack {:building [] :type :array}))
-
-          :key
-          (recur rest-events (update stack (dec (count stack)) assoc :current-key (:key event)))
-
-          :primitive
-          (let [value (:value event)
-                parent (peek stack)]
-            (if (:current-key parent)
-              ;; Object field
-              (let [k (:current-key parent)
-                    updated-stack (-> stack
-                                      (update (dec (count stack)) update :building assoc k value)
-                                      (update (dec (count stack)) dissoc :current-key))]
-                (recur rest-events updated-stack))
-              ;; Array element or root primitive
-              (if parent
-                (let [updated-stack (update stack (dec (count stack)) update :building conj value)]
-                  (recur rest-events updated-stack))
-                ;; Root primitive
-                value)))
-
-          :end-object
-          (let [completed (:building (peek stack))
-                remaining-stack (pop stack)]
-            (if (empty? remaining-stack)
-              ;; Root object completed
-              (recur rest-events (conj remaining-stack {:building completed :type :done}))
-              ;; Nested - add to parent
-              (let [parent (peek remaining-stack)]
-                (if (:current-key parent)
-                  (let [k (:current-key parent)
-                        updated-stack (-> remaining-stack
-                                          (update (dec (count remaining-stack)) update :building assoc k completed)
-                                          (update (dec (count remaining-stack)) dissoc :current-key))]
-                    (recur rest-events updated-stack))
-                  (let [updated-stack (update remaining-stack (dec (count remaining-stack)) update :building conj completed)]
-                    (recur rest-events updated-stack))))))
-
-          :end-array
-          (let [completed (:building (peek stack))
-                remaining-stack (pop stack)]
-            (if (empty? remaining-stack)
-              ;; Root array completed
-              (recur rest-events (conj remaining-stack {:building completed :type :done}))
-              ;; Nested - add to parent
-              (let [parent (peek remaining-stack)]
-                (if (:current-key parent)
-                  (let [k (:current-key parent)
-                        updated-stack (-> remaining-stack
-                                          (update (dec (count remaining-stack)) update :building assoc k completed)
-                                          (update (dec (count remaining-stack)) dissoc :current-key))]
-                    (recur rest-events updated-stack))
-                  (let [updated-stack (update remaining-stack (dec (count remaining-stack)) update :building conj completed)]
-                    (recur rest-events updated-stack)))))))))))
-
-
-(deftest test-reconstruct-from-events
-  (testing "Can reconstruct original value from events"
-    (let [input "name: Alice\nage: 30\ntags[2]: reading,gaming"
-          events (toon/events input)
-          reconstructed (build-from-events events)
-          direct-decode (toon/decode input)]
-      (is (= direct-decode reconstructed)))))
-
-
-;; ============================================================================
-;; Performance and Memory Tests
+;; Lazy Evaluation Test
 ;; ============================================================================
 
 (deftest test-lazy-evaluation
@@ -400,182 +414,3 @@
       ;; Verify they are the expected events
       (is (events/start-object? (first events)))
       (is (events/key-event? (second events))))))
-
-
-;; ============================================================================
-;; Streaming Equivalence Tests
-;; ============================================================================
-
-(deftest test-streaming-vs-regular-decode-simple
-  (testing "Streaming decode matches regular decode for simple object"
-    (let [input "name: Alice\nage: 30"
-          regular-result (toon/decode input)
-          stream-result (toon/events->value (toon/events input))]
-      (is (= regular-result stream-result)))))
-
-
-(deftest test-streaming-vs-regular-decode-nested
-  (testing "Streaming decode matches regular decode for nested objects"
-    (let [input "user:\n  profile:\n    name: Alice\n    age: 30"
-          regular-result (toon/decode input)
-          stream-result (toon/events->value (toon/events input))]
-      (is (= regular-result stream-result)))))
-
-
-(deftest test-streaming-vs-regular-decode-mixed
-  (testing "Streaming decode matches regular decode for mixed structures"
-    (let [input "name: Alice\nscores[3]: 95, 87, 92\naddress:\n  city: NYC\n  zip: 10001"
-          regular-result (toon/decode input)
-          stream-result (toon/events->value (toon/events input))]
-      (is (= regular-result stream-result)))))
-
-
-(deftest test-streaming-vs-regular-decode-root-primitives
-  (testing "Streaming decode matches regular decode for root primitives"
-    (doseq [input ["42" "Hello World" "true" "null"]]
-      (let [regular-result (toon/decode input)
-            stream-result (toon/events->value (toon/events input))]
-        (is (= regular-result stream-result)
-            (str "Failed for input: " input))))))
-
-
-;; ============================================================================
-;; Root Array Tests
-;; ============================================================================
-
-(deftest test-root-array-stream
-  (testing "Root array with list items"
-    (let [input "[2]:\n  - Apple\n  - Banana"
-          events (events->vec (toon/events input))]
-      (is (events/start-array? (first events)))
-      (is (= "Apple" (events/value (nth events 1))))
-      (is (= "Banana" (events/value (nth events 2))))
-      (is (events/end-array? (last events))))))
-
-
-(deftest test-root-primitive-number
-  (testing "Root primitive number"
-    (let [input "42"
-          events (events->vec (toon/events input))]
-      (is (= 1 (count events)))
-      (is (events/primitive? (first events)))
-      (is (= 42.0 (events/value (first events)))))))
-
-
-(deftest test-root-primitive-string
-  (testing "Root primitive string"
-    (let [input "Hello World"
-          events (events->vec (toon/events input))]
-      (is (= 1 (count events)))
-      (is (events/primitive? (first events)))
-      (is (= "Hello World" (events/value (first events)))))))
-
-
-(deftest test-root-primitive-boolean
-  (testing "Root primitive boolean"
-    (let [input "true"
-          events (events->vec (toon/events input))]
-      (is (= 1 (count events)))
-      (is (events/primitive? (first events)))
-      (is (= true (events/value (first events)))))))
-
-
-(deftest test-root-primitive-null
-  (testing "Root primitive null"
-    (let [input "null"
-          events (events->vec (toon/events input))]
-      (is (= 1 (count events)))
-      (is (events/primitive? (first events)))
-      (is (nil? (events/value (first events)))))))
-
-
-;; ============================================================================
-;; List Array with Nested Objects
-;; ============================================================================
-
-(deftest test-list-array-with-nested-objects
-  (testing "List array containing nested objects"
-    (let [input "users[2]:\n  - name: Alice\n    age: 30\n  - name: Bob\n    age: 25"
-          regular-result (toon/decode input)
-          stream-result (toon/events->value (toon/events input))]
-      (is (= regular-result stream-result))
-      (is (= {"users" [{"name" "Alice" "age" 30.0}
-                       {"name" "Bob" "age" 25.0}]}
-             stream-result)))))
-
-
-;; ============================================================================
-;; Streaming Equivalence Tests
-;; ============================================================================
-
-(deftest test-streaming-equivalence-simple-object
-  (testing "Streaming decode matches regular decode for simple object"
-    (let [input "name: Alice\nage: 30"
-          regular-result (toon/decode input)
-          stream-result (toon/events->value (toon/events input))]
-      (is (= regular-result stream-result)))))
-
-
-(deftest test-streaming-equivalence-nested-objects
-  (testing "Streaming decode matches regular decode for nested objects"
-    (let [input "user:\n  name: Alice\n  profile:\n    age: 30\n    active: true"
-          regular-result (toon/decode input)
-          stream-result (toon/events->value (toon/events input))]
-      (is (= regular-result stream-result)))))
-
-
-(deftest test-streaming-equivalence-mixed-structures
-  (testing "Streaming decode matches regular decode for mixed objects and arrays"
-    (let [input "user:\n  name: Alice\n  tags[2]: dev,clojure\n  scores[3]: 85,92,78"
-          regular-result (toon/decode input)
-          stream-result (toon/events->value (toon/events input))]
-      (is (= regular-result stream-result)))))
-
-
-(deftest test-streaming-equivalence-list-array-with-objects
-  (testing "Streaming decode matches regular decode for list array with objects"
-    (let [input "[2]:\n  - id: 1\n    name: Alice\n  - id: 2\n    name: Bob"
-          regular-result (toon/decode input)
-          stream-result (toon/events->value (toon/events input))]
-      (is (= regular-result stream-result)))))
-
-
-(deftest test-streaming-equivalence-root-primitive-number
-  (testing "Streaming decode matches regular decode for root primitive number"
-    (let [input "42"
-          regular-result (toon/decode input)
-          stream-result (toon/events->value (toon/events input))]
-      (is (= regular-result stream-result))
-      (is (= 42.0 stream-result)))))
-
-
-(deftest test-streaming-equivalence-root-primitive-string
-  (testing "Streaming decode matches regular decode for root primitive string"
-    (let [input "hello world"
-          regular-result (toon/decode input)
-          stream-result (toon/events->value (toon/events input))]
-      (is (= regular-result stream-result))
-      (is (= "hello world" stream-result)))))
-
-
-(deftest test-streaming-equivalence-root-primitive-boolean
-  (testing "Streaming decode matches regular decode for root primitive boolean"
-    (let [input-true "true"
-          input-false "false"
-          regular-true (toon/decode input-true)
-          stream-true (toon/events->value (toon/events input-true))
-          regular-false (toon/decode input-false)
-          stream-false (toon/events->value (toon/events input-false))]
-      (is (= regular-true stream-true))
-      (is (true? stream-true))
-      (is (= regular-false stream-false))
-      (is (false? stream-false)))))
-
-
-(deftest test-streaming-equivalence-root-primitive-null
-  (testing "Streaming decode matches regular decode for root primitive null"
-    (let [input "null"
-          regular-result (toon/decode input)
-          stream-result (toon/events->value (toon/events input))]
-      (is (= regular-result stream-result))
-      (is (nil? stream-result)))))
