@@ -25,9 +25,8 @@
    :buf-size 32})
 
 
-(defn- normalize-source
-  "Normalize input to a sequence of lines.
-  Returns nil for non-string, non-sequential sources (e.g., channels)."
+(defn- source-lines
+  "Extract lines from source. Returns nil for channels."
   [source]
   (cond
     (string? source) (str/split-lines source)
@@ -76,7 +75,7 @@
          cursor (-> input
                     (scanner/to-parsed-lines (:indent opts) (:strict opts))
                     scanner/cursor-from-scan-result)]
-     (event-builder/events-from-cursor cursor (:indent opts) (:strict opts)))))
+     (event-builder/cursor->events cursor (:indent opts) (:strict opts)))))
 
 
 ;; ============================================================================
@@ -138,7 +137,7 @@
   ([source options]
    (let [opts (merge default-options options)
          out-ch (async/chan (:buf-size opts))]
-     (if-let [lines (normalize-source source)]
+     (if-let [lines (source-lines source)]
        ;; Sync source - emit directly
        (emit-events-to-channel! lines opts out-ch)
        ;; Async source (channel) - collect first then emit
