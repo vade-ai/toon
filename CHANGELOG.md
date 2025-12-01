@@ -8,6 +8,51 @@ This library implements [TOON v2.0 specification](https://github.com/toon-format
 
 ## [Unreleased]
 
+## [2025.12.01-36] - 2025-12-01
+
+### Added
+
+- **Streaming decode API** - New event-based streaming decoder for memory-efficient processing
+  - `events` - Returns lazy sequence of parse events from TOON input
+  - `events-ch` - Returns core.async channel of parse events for async processing
+  - `events->value` - Reconstructs values from event streams
+  - Event types: `:start-object`, `:end-object`, `:start-array`, `:end-array`, `:key`, `:primitive`
+  - Array start events include `:length` property
+  - Key events include `:was-quoted` property when key was quoted
+
+- **New API functions**
+  - `lines->value` - Decode from pre-split lines (useful for streaming line-by-line input)
+  - `encode-lines` - Returns lazy sequence of encoded lines (streaming line output)
+
+- **ClojureScript testing** - Added cljs-test-runner for cross-platform test verification
+
+### Changed
+
+- **BREAKING: Namespace rename** - Renamed `com.vadelabs.toon.interface` to `com.vadelabs.toon.core`
+  - Avoids JavaScript reserved keyword `interface` causing namespace munging in ClojureScript
+  - Update your requires: `[com.vadelabs.toon.core :as toon]`
+
+- **Naming conventions** - Applied Stuart Sierra naming conventions throughout
+  - `cursor->events` (was `decode-events-from-cursor`)
+  - `list-item-type` (was `detect-list-item-type`)
+  - `event-key` (was `key`) to avoid shadowing `clojure.core/key`
+
+- **Code quality** - Refactored event-builder and streaming code
+  - Extracted helpers for better readability
+  - Reduced CLJ/CLJS duplication with shared helpers
+  - Simplified event API with optional was-quoted
+
+### Fixed
+
+- Support for list arrays with nested objects in streaming decode
+- Strict mode validation for array counts in streaming decode
+- Babashka-compatible LineWriter
+
+### Technical Details
+
+- 520 tests with 1074 assertions (up from 456 tests)
+- Added core.async dependency for async streaming support
+
 ## [2025.11.20-10] - 2025-11-20
 
 ### Changed
@@ -133,6 +178,7 @@ com.vadelabs/toon {:mvn/version "2025.11.05-43"}
 - [Reference Implementation (TypeScript)](https://github.com/toon-format/toon)
 - [Other Implementations](https://github.com/toon-format/toon#other-implementations)
 
+[2025.12.01-36]: https://github.com/vadelabs/toon/releases/tag/v2025.12.01-36
 [2025.11.20-10]: https://github.com/vadelabs/toon/releases/tag/v2025.11.20-10
 [2025.11.12-5]: https://github.com/vadelabs/toon/releases/tag/v2025.11.12-5
 [2025.11.11-3]: https://github.com/vadelabs/toon/releases/tag/v2025.11.11-3
