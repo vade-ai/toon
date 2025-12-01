@@ -6,7 +6,7 @@
     [clojure.test.check.clojure-test :refer [defspec]]
     [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop]
-    [com.vadelabs.toon.interface :as toon]))
+    [com.vadelabs.toon.core :as toon]))
 
 
 ;; ============================================================================

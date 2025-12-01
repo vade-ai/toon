@@ -77,7 +77,7 @@ com.vadelabs/toon {:mvn/version "2025.11.20-10"}
 ## Quick Start
 
 ```clojure
-(require '[com.vadelabs.toon.interface :as toon])
+(require '[com.vadelabs.toon.core :as toon])
 
 ;; Encode Clojure data to TOON
 (toon/encode {:name "Alice" :age 30 :tags ["dev" "rust"]})

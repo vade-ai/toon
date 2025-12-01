@@ -12,7 +12,7 @@
     [clojure.string :as str]
     [clojure.test :refer [deftest is testing are]]
     [com.vadelabs.toon.decode.events :as events]
-    [com.vadelabs.toon.interface :as toon]))
+    [com.vadelabs.toon.core :as toon]))
 
 
 ;; ============================================================================

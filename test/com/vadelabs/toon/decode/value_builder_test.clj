@@ -2,7 +2,7 @@
   (:require
     [clojure.test :refer [deftest is testing]]
     [com.vadelabs.toon.decode.value-builder :as vb]
-    [com.vadelabs.toon.interface :as toon]))
+    [com.vadelabs.toon.core :as toon]))
 
 
 ;; ============================================================================

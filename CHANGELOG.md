@@ -121,7 +121,7 @@ Saves tokens when sending structured data to LLMs:
 com.vadelabs/toon {:mvn/version "2025.11.05-43"}
 
 ;; Use it
-(require '[com.vadelabs.toon.interface :as toon])
+(require '[com.vadelabs.toon.core :as toon])
 
 (toon/encode {:users [{:id 1 :name "Alice"} {:id 2 :name "Bob"}]})
 ;=> "users[2]{id,name}:\n  1,Alice\n  2,Bob"

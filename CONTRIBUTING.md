@@ -77,7 +77,7 @@ Example test structure:
     [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop]
     [clojure.test.check.clojure-test :refer [defspec]]
-    [com.vadelabs.toon.interface :as toon]))
+    [com.vadelabs.toon.core :as toon]))
 
 (deftest my-feature-test
   (testing "basic functionality"

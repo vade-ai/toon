@@ -1,4 +1,4 @@
-(ns com.vadelabs.toon.interface
+(ns com.vadelabs.toon.core
   (:require
     [clojure.string :as str]
     [com.vadelabs.toon.decode.decoders :as decoders]

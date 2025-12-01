@@ -3,7 +3,7 @@
     #?(:clj [clojure.test :refer [deftest is testing]]
        :cljs [cljs.test :refer [deftest is testing]])
     [clojure.string :as str]
-    [com.vadelabs.toon.interface :as toon]))
+    [com.vadelabs.toon.core :as toon]))
 
 
 ;; ============================================================================
