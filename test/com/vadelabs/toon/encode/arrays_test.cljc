@@ -326,3 +326,76 @@
               (= "[2]:\n  - age: 30\n    name: Alice\n  - zip: \"10001\"\n    city: NYC" result)
               (= "[2]:\n  - name: Alice\n    age: 30\n  - zip: \"10001\"\n    city: NYC" result)
               (= "[2]:\n  - age: 30\n    name: Alice\n  - city: NYC\n    zip: \"10001\"" result))))))
+
+
+;; ============================================================================
+;; V3.0 Spec: List Item with Tabular Array First Field Tests
+;; ============================================================================
+
+(deftest encode-object-as-list-item-tabular-first-field-test
+  (testing "Encode list item when first field is tabular array (v3.0 spec)"
+    (let [obj {"orders" [{"id" 1 "qty" 10} {"id" 2 "qty" 5}]
+               "total" 350}
+          w (arr/object-as-list-item obj "," 0 (writer/create))
+          result (writer/to-string w)]
+      ;; v3.0 format: - orders[N]{fields}: with rows at depth+2
+      (is (or (= "- orders[2]{id,qty}:\n    1,10\n    2,5\n  total: 350" result)
+              (= "- orders[2]{qty,id}:\n    10,1\n    5,2\n  total: 350" result))))))
+
+
+(deftest encode-object-as-list-item-tabular-only-field-test
+  (testing "Encode list item when only field is tabular array"
+    (let [obj {"items" [{"a" 1 "b" 2} {"a" 3 "b" 4}]}
+          w (arr/object-as-list-item obj "," 0 (writer/create))
+          result (writer/to-string w)]
+      (is (or (= "- items[2]{a,b}:\n    1,2\n    3,4" result)
+              (= "- items[2]{b,a}:\n    2,1\n    4,3" result))))))
+
+
+(deftest encode-object-as-list-item-tabular-with-multiple-rest-fields-test
+  (testing "Encode list item with tabular first field and multiple rest fields"
+    (let [obj {"data" [{"x" 1} {"x" 2}]
+               "name" "test"
+               "count" 2}
+          w (arr/object-as-list-item obj "," 0 (writer/create))
+          result (writer/to-string w)
+          lines (clojure.string/split-lines result)]
+      ;; First line should be tabular header
+      (is (clojure.string/starts-with? (first lines) "- data[2]{x}:"))
+      ;; Rows at depth+2 (4 spaces)
+      (is (= "    1" (second lines)))
+      (is (= "    2" (nth lines 2)))
+      ;; Rest fields at depth+1 (2 spaces)
+      (is (some #(clojure.string/starts-with? % "  name:") (drop 3 lines)))
+      (is (some #(clojure.string/starts-with? % "  count:") (drop 3 lines))))))
+
+
+(deftest encode-object-as-list-item-non-tabular-array-test
+  (testing "Encode list item when first field is non-tabular (mixed) array"
+    (let [obj {"items" [1 "two" 3]
+               "label" "mixed"}
+          w (arr/object-as-list-item obj "," 0 (writer/create))
+          result (writer/to-string w)]
+      ;; Non-tabular array should use inline format for primitives
+      (is (or (= "- items[3]: 1,two,3\n  label: mixed" result)
+              (= "- label: mixed\n  items[3]: 1,two,3" result))))))
+
+
+(deftest encode-object-as-list-item-empty-array-first-field-test
+  (testing "Encode list item when first field is empty array"
+    (let [obj {"items" []
+               "name" "empty"}
+          w (arr/object-as-list-item obj "," 0 (writer/create))
+          result (writer/to-string w)]
+      (is (or (= "- items[0]\n  name: empty" result)
+              (= "- name: empty\n  items[0]" result))))))
+
+
+(deftest encode-object-as-list-item-inline-array-first-field-test
+  (testing "Encode list item when first field is primitive array"
+    (let [obj {"values" [1 2 3]
+               "sum" 6}
+          w (arr/object-as-list-item obj "," 0 (writer/create))
+          result (writer/to-string w)]
+      (is (or (= "- values[3]: 1,2,3\n  sum: 6" result)
+              (= "- sum: 6\n  values[3]: 1,2,3" result))))))

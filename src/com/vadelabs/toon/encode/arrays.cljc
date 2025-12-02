@@ -14,6 +14,10 @@
     [com.vadelabs.toon.utils :as quote]))
 
 
+;; Forward declarations for mutual references
+(declare mixed-items)
+
+
 ;; ============================================================================
 ;; Array Header Utilities
 ;; ============================================================================
@@ -197,41 +201,317 @@
 ;; Object as List Item Encoding
 ;; ============================================================================
 
-(defn object-as-list-item
-  "Encodes an object as a list item with first key-value on hyphen line.
-
-  Format (single key):
-    - key: value
-
-  Format (multiple keys):
-    - key1: value1
-      key2: value2
-      key3: value3
+(defn- tabular-array?
+  "Checks if an array is tabular (uniform objects with common primitive-only keys).
 
   Parameters:
-    - obj: Map to encode
+    - arr: Vector to check
+
+  Returns:
+    Vector of common keys if tabular, nil otherwise."
+  [arr]
+  (when (and (vector? arr)
+             (seq arr)
+             (every? map? arr))
+    (let [common-keys (extract-common-keys arr)]
+      (when (and (seq common-keys)
+                 ;; All values for common keys must be primitives
+                 (every? (fn [obj]
+                           (every? (fn [k]
+                                     (norm/primitive? (get obj k)))
+                                   common-keys))
+                         arr))
+        common-keys))))
+
+
+(defn- encode-first-field-tabular
+  "Encodes list-item object when first field is a tabular array (v3.0 spec).
+
+  Format:
+    - key[N]{fields}:
+        row1
+        row2
+      other-key: value
+
+  Parameters:
+    - first-key: Key of the first field
+    - first-value: Tabular array value
+    - common-keys: Vector of common keys in the tabular array
+    - rest-keys: Remaining keys to encode
+    - obj: Full object
     - delimiter: Delimiter character
     - depth: Current indentation depth
     - writer: LineWriter instance
 
   Returns:
     Updated LineWriter."
-  [obj delimiter depth writer]
-  (let [ks (vec (keys obj))]
-    (if (empty? ks)
-      ;; Empty object: just "-"
-      (writer/push writer depth const/list-item-marker)
-      (let [first-key (first ks)
-            first-value (get obj first-key)
-            first-line (str const/list-item-prefix first-key const/colon const/space (prim/encode first-value delimiter))
-            w (writer/push writer depth first-line)]
-        ;; Encode remaining keys at depth+1 (aligned with content after "- ")
-        (reduce (fn [w k]
-                  (let [v (get obj k)
-                        line (str k const/colon const/space (prim/encode v delimiter))]
-                    (writer/push w (inc depth) line)))
-                w
-                (rest ks))))))
+  [first-key first-value common-keys rest-keys obj delimiter depth writer]
+  (let [;; Build header: - key[N]{fields}:
+        quoted-key (quote/maybe-quote-key first-key)
+        header-suffix (array-header (count first-value) delimiter)
+        quoted-keys (into [] (map quote/maybe-quote-key) common-keys)
+        fields-part (str const/open-brace
+                         (str/join delimiter quoted-keys)
+                         const/close-brace
+                         const/colon)
+        header-line (str const/list-item-prefix quoted-key header-suffix fields-part)
+        w (writer/push writer depth header-line)]
+    ;; Write tabular rows at depth+2
+    (let [w (reduce (fn [w row]
+                      (tabular-row row common-keys delimiter (+ depth 2) w))
+                    w
+                    first-value)]
+      ;; Write remaining fields at depth+1
+      (reduce (fn [w k]
+                (let [v (get obj k)
+                      line (str (quote/maybe-quote-key k) const/colon const/space (prim/encode v delimiter))]
+                  (writer/push w (inc depth) line)))
+              w
+              rest-keys))))
+
+
+(defn- encode-first-field-primitive
+  "Encodes list-item object when first field is a primitive.
+
+  Format:
+    - key: value
+      other-key: other-value
+
+  Parameters:
+    - first-key: Key of the first field
+    - first-value: Primitive value
+    - rest-keys: Remaining keys to encode
+    - obj: Full object
+    - delimiter: Delimiter character
+    - depth: Current indentation depth
+    - writer: LineWriter instance
+
+  Returns:
+    Updated LineWriter."
+  [first-key first-value rest-keys obj delimiter depth writer]
+  (let [quoted-key (quote/maybe-quote-key first-key)
+        first-line (str const/list-item-prefix quoted-key const/colon const/space (prim/encode first-value delimiter))
+        w (writer/push writer depth first-line)]
+    ;; Encode remaining keys at depth+1
+    (reduce (fn [w k]
+              (let [v (get obj k)
+                    line (str (quote/maybe-quote-key k) const/colon const/space (prim/encode v delimiter))]
+                (writer/push w (inc depth) line)))
+            w
+            rest-keys)))
+
+
+(defn- encode-first-field-empty-array
+  "Encodes list-item object when first field is an empty array.
+
+  Format:
+    - key[0]:
+      other-key: value
+
+  Parameters:
+    - first-key: Key of the first field
+    - rest-keys: Remaining keys to encode
+    - obj: Full object
+    - delimiter: Delimiter character
+    - depth: Current indentation depth
+    - writer: LineWriter instance
+
+  Returns:
+    Updated LineWriter."
+  [first-key rest-keys obj delimiter depth writer]
+  (let [quoted-key (quote/maybe-quote-key first-key)
+        header (str const/list-item-prefix quoted-key (array-header 0 delimiter))
+        w (writer/push writer depth header)]
+    ;; Encode remaining keys at depth+1
+    (reduce (fn [w k]
+              (let [v (get obj k)
+                    line (str (quote/maybe-quote-key k) const/colon const/space (prim/encode v delimiter))]
+                (writer/push w (inc depth) line)))
+            w
+            rest-keys)))
+
+
+(defn- encode-first-field-inline-array
+  "Encodes list-item object when first field is an inline primitive array.
+
+  Format:
+    - key[N]: val1,val2,val3
+      other-key: value
+
+  Parameters:
+    - first-key: Key of the first field
+    - first-value: Array of primitives
+    - rest-keys: Remaining keys to encode
+    - obj: Full object
+    - delimiter: Delimiter character
+    - depth: Current indentation depth
+    - writer: LineWriter instance
+
+  Returns:
+    Updated LineWriter."
+  [first-key first-value rest-keys obj delimiter depth writer]
+  (let [quoted-key (quote/maybe-quote-key first-key)
+        header (str const/list-item-prefix quoted-key (array-header (count first-value) delimiter) const/colon const/space)
+        values-str (str/join delimiter (map #(prim/encode % delimiter) first-value))
+        first-line (str header values-str)
+        w (writer/push writer depth first-line)]
+    ;; Encode remaining keys at depth+1
+    (reduce (fn [w k]
+              (let [v (get obj k)
+                    line (str (quote/maybe-quote-key k) const/colon const/space (prim/encode v delimiter))]
+                (writer/push w (inc depth) line)))
+            w
+            rest-keys)))
+
+
+(defn- encode-first-field-complex-array
+  "Encodes list-item object when first field is a non-inline array.
+
+  Format:
+    - key[N]:
+        - item1
+        - item2
+      other-key: value
+
+  Parameters:
+    - first-key: Key of the first field
+    - first-value: Complex array
+    - rest-keys: Remaining keys to encode
+    - obj: Full object
+    - delimiter: Delimiter character
+    - depth: Current indentation depth
+    - writer: LineWriter instance
+
+  Returns:
+    Updated LineWriter."
+  [first-key first-value rest-keys obj delimiter depth writer]
+  (let [quoted-key (quote/maybe-quote-key first-key)
+        header (str const/list-item-prefix quoted-key (array-header (count first-value) delimiter) const/colon)
+        w (writer/push writer depth header)
+        ;; Items at depth+2
+        w (mixed-items first-value delimiter (+ depth 2) w)]
+    ;; Encode remaining keys at depth+1
+    (reduce (fn [w k]
+              (let [v (get obj k)
+                    line (str (quote/maybe-quote-key k) const/colon const/space (prim/encode v delimiter))]
+                (writer/push w (inc depth) line)))
+            w
+            rest-keys)))
+
+
+(defn- encode-first-field-object
+  "Encodes list-item object when first field is a nested object.
+
+  Format:
+    - key:
+        nested-key: nested-value
+      other-key: value
+
+  Parameters:
+    - first-key: Key of the first field
+    - first-value: Nested object
+    - rest-keys: Remaining keys to encode
+    - obj: Full object
+    - delimiter: Delimiter character
+    - depth: Current indentation depth
+    - writer: LineWriter instance
+    - encode-object-fn: Function to encode nested objects
+
+  Returns:
+    Updated LineWriter."
+  [first-key first-value rest-keys obj delimiter depth writer encode-object-fn]
+  (let [quoted-key (quote/maybe-quote-key first-key)
+        header (str const/list-item-prefix quoted-key const/colon)
+        w (writer/push writer depth header)
+        ;; Nested object at depth+2
+        w (if (empty? first-value)
+            w
+            (encode-object-fn first-value delimiter (+ depth 2) w))]
+    ;; Encode remaining keys at depth+1
+    (reduce (fn [w k]
+              (let [v (get obj k)
+                    line (str (quote/maybe-quote-key k) const/colon const/space (prim/encode v delimiter))]
+                (writer/push w (inc depth) line)))
+            w
+            rest-keys)))
+
+
+(defn object-as-list-item
+  "Encodes an object as a list item (v3.0 spec compliant).
+
+  For objects where first field is a tabular array:
+    - key[N]{fields}:
+        row1
+        row2
+      other-key: value
+
+  For objects with primitive first field:
+    - key: value
+      other-key: other-value
+
+  For empty objects:
+    -
+
+  Parameters:
+    - obj: Map to encode
+    - delimiter: Delimiter character
+    - depth: Current indentation depth
+    - writer: LineWriter instance
+    - encode-object-fn: (optional) Function to encode nested objects
+
+  Returns:
+    Updated LineWriter."
+  ([obj delimiter depth writer]
+   (object-as-list-item obj delimiter depth writer nil))
+  ([obj delimiter depth writer encode-object-fn]
+   (let [ks (vec (keys obj))]
+     (if (empty? ks)
+       ;; Empty object: just "-"
+       (writer/push writer depth const/list-item-marker)
+       (let [first-key (first ks)
+             first-value (get obj first-key)
+             rest-keys (rest ks)
+             ;; Check for tabular array first (v3.0 spec)
+             tabular-keys (tabular-array? first-value)]
+         (cond
+           ;; First field is a tabular array (v3.0 spec)
+           tabular-keys
+           (encode-first-field-tabular first-key first-value tabular-keys rest-keys obj delimiter depth writer)
+
+           ;; First field is primitive
+           (norm/primitive? first-value)
+           (encode-first-field-primitive first-key first-value rest-keys obj delimiter depth writer)
+
+           ;; First field is empty array
+           (and (vector? first-value) (empty? first-value))
+           (encode-first-field-empty-array first-key rest-keys obj delimiter depth writer)
+
+           ;; First field is inline primitive array
+           (norm/array-of-primitives? first-value)
+           (encode-first-field-inline-array first-key first-value rest-keys obj delimiter depth writer)
+
+           ;; First field is complex array (non-tabular or mixed)
+           (vector? first-value)
+           (encode-first-field-complex-array first-key first-value rest-keys obj delimiter depth writer)
+
+           ;; First field is nested object
+           (map? first-value)
+           (if encode-object-fn
+             (encode-first-field-object first-key first-value rest-keys obj delimiter depth writer encode-object-fn)
+             ;; Fallback for nested objects without encode-object-fn
+             (let [quoted-key (quote/maybe-quote-key first-key)
+                   header (str const/list-item-prefix quoted-key const/colon)
+                   w (writer/push writer depth header)]
+               (reduce (fn [w k]
+                         (let [v (get obj k)
+                               line (str (quote/maybe-quote-key k) const/colon const/space (prim/encode v delimiter))]
+                           (writer/push w (inc depth) line)))
+                       w
+                       rest-keys)))
+
+           ;; Default fallback
+           :else
+           (writer/push writer depth const/list-item-marker)))))))
 
 
 ;; ============================================================================
