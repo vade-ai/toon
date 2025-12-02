@@ -2,14 +2,14 @@
 
 [![Clojars Project](https://img.shields.io/clojars/v/com.vadelabs/toon.svg)](https://clojars.org/com.vadelabs/toon)
 [![CI](https://github.com/vadelabs/toon/actions/workflows/ci.yml/badge.svg)](https://github.com/vadelabs/toon/actions/workflows/ci.yml)
-[![SPEC v2.0](https://img.shields.io/badge/spec-v2.0-lightgray)](https://github.com/toon-format/spec)
+[![SPEC v3.0](https://img.shields.io/badge/spec-v3.0-lightgray)](https://github.com/toon-format/spec)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A Clojure/ClojureScript implementation of **Token-Oriented Object Notation** – a compact, human-readable serialization format designed for passing structured data to Large Language Models with significantly reduced token usage.
 
 TOON achieves **49% fewer tokens than formatted JSON** (28% vs compact JSON) while maintaining explicit structure that helps LLMs parse and validate data reliably. It's intended for *LLM input* as a lossless, drop-in representation of JSON data.
 
-> **Specification:** This library implements [TOON v2.0](https://github.com/toon-format/spec) specification
+> **Specification:** This library implements [TOON v3.0](https://github.com/toon-format/spec) specification
 > **Reference Implementation:** [TypeScript/JavaScript](https://github.com/toon-format/toon)
 
 ## Why TOON?
@@ -195,6 +195,9 @@ Encodes Clojure data structures to TOON format.
 - `options` - Optional map:
   - `:indent` - Spaces per indentation level (default: 2)
   - `:delimiter` - Array value delimiter: `","` (default), `"\t"`, or `"|"`
+  - `:key-collapsing` - Key collapsing mode: `:off` (default) or `:safe`
+  - `:flatten-depth` - Max depth for key collapsing (default: Infinity)
+  - `:replacer` - Function `(fn [key value path] ...)` to transform/filter values
 
 **Returns:** String in TOON format
 
@@ -213,6 +216,17 @@ Encodes Clojure data structures to TOON format.
 (encode [{:id 1 :name "Alice"}
          {:id 2 :name "Bob"}])
 ;=> "[2]{id,name}:\n  1,Alice\n  2,Bob"
+
+;; Using replacer to filter sensitive fields
+(encode {:name "Alice" :password "secret"}
+        {:replacer (fn [k v _] (when-not (= k "password") v))})
+;=> "name: Alice"
+
+;; Using replacer to transform values
+(require '[clojure.string :as str])
+(encode {:status "active"}
+        {:replacer (fn [k v _] (if (string? v) (str/upper-case v) v))})
+;=> "status: ACTIVE"
 ```
 
 ### `decode`

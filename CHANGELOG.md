@@ -4,9 +4,24 @@ All notable changes to this project will be documented in this file.
 
 This project uses date-based versioning: `YYYY.MM.DD-N` where N is the number of commits since the last release.
 
-This library implements [TOON v2.0 specification](https://github.com/toon-format/spec) (2025-11-10).
+This library implements [TOON v3.0 specification](https://github.com/toon-format/spec) (2025-11-24).
 
 ## [Unreleased]
+
+### Added
+
+- **Replacer function support** - New `:replacer` option for `encode` and `encode-lines`
+  - Function signature: `(fn [key value path] ...)` similar to JSON.stringify's replacer
+  - Filter properties/elements by returning `nil`
+  - Transform values during encoding
+  - Path tracking for context-aware transformations
+
+### Changed
+
+- **TOON v3.0 compliance** - Updated from v2.0 to v3.0 specification
+  - List-item objects with tabular array as first field now emit `- key[N]{fields}:` on hyphen line
+  - Tabular rows at depth+2 relative to hyphen line
+  - Remaining fields at depth+1
 
 ## [2025.12.01-36] - 2025-12-01
 
