@@ -128,9 +128,8 @@
           obj {"name" "Alice" "age" 30}
           w (obj/object obj opts 0 (writer/create))
           result (writer/to-string w)]
-      ;; Note: Map order may vary
-      (is (or (= "name: Alice\nage: 30" result)
-              (= "age: 30\nname: Alice" result))))))
+      (is (= #{"name: Alice" "age: 30"}
+             (set (str/split-lines result)))))))
 
 
 (deftest encode-object-with-various-types-test
@@ -174,9 +173,8 @@
           obj {"name" "Alice" "age" 30}
           w (obj/object obj opts 1 (writer/create))
           result (writer/to-string w)]
-      ;; All lines should be indented
-      (is (or (= "  name: Alice\n  age: 30" result)
-              (= "  age: 30\n  name: Alice" result))))))
+      (is (= #{"  name: Alice" "  age: 30"}
+             (set (str/split-lines result)))))))
 
 
 ;; ============================================================================
@@ -206,8 +204,8 @@
     (let [opts (make-options)
           w (obj/value {"a" 1 "b" 2} opts 0 (writer/create))
           result (writer/to-string w)]
-      (is (or (= "a: 1\nb: 2" result)
-              (= "b: 2\na: 1" result))))))
+      (is (= #{"a: 1" "b: 2"}
+             (set (str/split-lines result)))))))
 
 
 ;; ============================================================================

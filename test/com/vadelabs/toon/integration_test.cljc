@@ -33,9 +33,8 @@
 (deftest encode-simple-object-test
   (testing "Encode simple flat object"
     (let [result (toon/encode {:name "Alice" :age 30})]
-      ;; Should normalize keywords to strings and encode
-      (is (or (= "name: Alice\nage: 30" result)
-              (= "age: 30\nname: Alice" result))))))
+      (is (= #{"name: Alice" "age: 30"}
+             (set (str/split-lines result)))))))
 
 
 (deftest encode-object-with-array-test
@@ -131,8 +130,8 @@
   (testing "Keywords are normalized to strings"
     (let [data {:name "Alice" :age 30}
           result (toon/encode data)]
-      (is (or (= "name: Alice\nage: 30" result)
-              (= "age: 30\nname: Alice" result))))))
+      (is (= #{"name: Alice" "age: 30"}
+             (set (str/split-lines result)))))))
 
 
 (deftest encode-with-namespaced-keywords-test
@@ -215,8 +214,8 @@
 (deftest encode-object-with-nil-values-test
   (testing "Encode object with nil values"
     (let [result (toon/encode {:name nil :age 30})]
-      (is (or (= "name: null\nage: 30" result)
-              (= "age: 30\nname: null" result))))))
+      (is (= #{"name: null" "age: 30"}
+             (set (str/split-lines result)))))))
 
 
 ;; ============================================================================

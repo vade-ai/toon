@@ -69,9 +69,9 @@
           [header-line cursor-after-header] (scanner/next-cursor cursor)
           header-info (parser/array-header-line (:content header-line))
           [result _] (arrays/tabular-array header-info cursor-after-header 1)]
-      (is (= 2 (count result)))
-      (is (= {"id" 1.0 "name" "Alice"} (first result)))
-      (is (= {"id" 2.0 "name" "Bob"} (second result))))))
+      (is (= [{"id" 1.0 "name" "Alice"}
+              {"id" 2.0 "name" "Bob"}]
+             result)))))
 
 
 (deftest tabular-array-three-columns-test
@@ -82,8 +82,10 @@
           [header-line cursor-after-header] (scanner/next-cursor cursor)
           header-info (parser/array-header-line (:content header-line))
           [result _] (arrays/tabular-array header-info cursor-after-header 1)]
-      (is (= 3 (count result)))
-      (is (= {"a" 1.0 "b" 2.0 "c" 3.0} (first result))))))
+      (is (= [{"a" 1.0 "b" 2.0 "c" 3.0}
+              {"a" 4.0 "b" 5.0 "c" 6.0}
+              {"a" 7.0 "b" 8.0 "c" 9.0}]
+             result)))))
 
 
 (deftest tabular-array-with-strings-test
@@ -94,9 +96,9 @@
           [header-line cursor-after-header] (scanner/next-cursor cursor)
           header-info (parser/array-header-line (:content header-line))
           [result _] (arrays/tabular-array header-info cursor-after-header 1)]
-      (is (= 2 (count result)))
-      (is (= {"id" 1.0 "desc" "hello, world"} (first result)))
-      (is (= {"id" 2.0 "desc" "simple"} (second result))))))
+      (is (= [{"id" 1.0 "desc" "hello, world"}
+              {"id" 2.0 "desc" "simple"}]
+             result)))))
 
 
 ;; ============================================================================
@@ -133,9 +135,9 @@
           [header-line cursor-after-header] (scanner/next-cursor cursor)
           header-info (parser/array-header-line (:content header-line))
           [result _] (arrays/list-array header-info cursor-after-header 1 true items/list-item)]
-      (is (= 2 (count result)))
-      (is (= {"id" 1.0 "name" "Alice"} (first result)))
-      (is (= {"id" 2.0 "name" "Bob"} (second result))))))
+      (is (= [{"id" 1.0 "name" "Alice"}
+              {"id" 2.0 "name" "Bob"}]
+             result)))))
 
 
 ;; ============================================================================
@@ -202,7 +204,10 @@
           [header-line cursor-after-header] (scanner/next-cursor cursor)
           header-info (parser/array-header-line (:content header-line))
           [result _] (arrays/tabular-array header-info cursor-after-header 1 false)]
-      (is (= 3 (count result))))))
+      (is (= [{"id" 1.0 "name" "Alice"}
+              {"id" 2.0 "name" "Bob"}
+              {"id" 3.0 "name" "Charlie"}]
+             result)))))
 
 
 
@@ -215,7 +220,7 @@
           [header-line cursor-after-header] (scanner/next-cursor cursor)
           header-info (parser/array-header-line (:content header-line))
           [result _] (arrays/list-array header-info cursor-after-header 1 false items/list-item)]
-      (is (= 3 (count result))))))
+      (is (= ["item1" "item2" "item3"] result)))))
 
 
 (deftest tabular-array-empty-test

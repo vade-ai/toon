@@ -26,28 +26,20 @@
 
 (deftest key-collapsing-multiple-chains-test
   (testing "Collapses multiple independent chains"
-    (let [data {"user" {"name" {"first" "Alice"}}
-                "app" {"version" {"number" "1.0"}}}
-          result (toon/encode data {:key-collapsing :safe})
-          lines (str/split-lines result)]
-      (is (= 2 (count lines)))
-      (is (some #(= "app.version.number: \"1.0\"" %) lines))
-      (is (some #(= "user.name.first: Alice" %) lines)))))
+    (is (= #{"app.version.number: \"1.0\""
+             "user.name.first: Alice"}
+           (set (str/split-lines
+                  (toon/encode {"user" {"name" {"first" "Alice"}}
+                                "app" {"version" {"number" "1.0"}}}
+                               {:key-collapsing :safe})))))))
 
 
 (deftest key-collapsing-partial-fold-test
   (testing "Partially collapses when encountering multi-key object"
-    (let [data {"data" {"config" {"server" "localhost" "port" 8080}}}
-          result (toon/encode data {:key-collapsing :safe})
-          lines (str/split-lines result)]
-      ;; Should have data.config: followed by indented keys
-      (is (= 3 (count lines)))
-      (is (= "data.config:" (first lines)))
-      ;; Port and server can be in any order
-      (is (or (and (str/includes? (second lines) "port")
-                   (str/includes? (nth lines 2) "server"))
-              (and (str/includes? (second lines) "server")
-                   (str/includes? (nth lines 2) "port")))))))
+    (is (= #{"data.config:" "  port: 8080" "  server: localhost"}
+           (set (str/split-lines
+                  (toon/encode {"data" {"config" {"server" "localhost" "port" 8080}}}
+                               {:key-collapsing :safe})))))))
 
 
 (deftest key-collapsing-with-array-leaf-test
@@ -112,15 +104,11 @@
 
 (deftest key-collapsing-nested-object-with-sibling-test
   (testing "Collapses one chain while keeping sibling unfolded"
-    (let [data {"nested" {"single" {"key" "value"}}
-                "other" "data"}
-          result (toon/encode data {:key-collapsing :safe})
-          lines (str/split-lines result)]
-      (is (= 2 (count lines)))
-      (is (or (and (= "nested.single.key: value" (first lines))
-                   (= "other: data" (second lines)))
-              (and (= "other: data" (first lines))
-                   (= "nested.single.key: value" (second lines))))))))
+    (is (= #{"nested.single.key: value" "other: data"}
+           (set (str/split-lines
+                  (toon/encode {"nested" {"single" {"key" "value"}}
+                                "other" "data"}
+                               {:key-collapsing :safe})))))))
 
 
 (deftest key-collapsing-with-numbers-test
@@ -146,17 +134,13 @@
 
 (deftest key-collapsing-mixed-structure-test
   (testing "Collapses appropriate chains in mixed structure"
-    (let [data {"app" {"name" "MyApp"
-                       "config" {"server" {"host" "localhost"}}}
-                "version" "1.0"}
-          result (toon/encode data {:key-collapsing :safe})
-          lines (str/split-lines result)]
-      ;; app has multiple keys so stays nested, but config.server.host collapses within it
-      (is (= 4 (count lines)))
-      (is (some #(= "app:" %) lines))
-      (is (some #(str/includes? % "name: MyApp") lines))
-      (is (some #(str/includes? % "config.server.host: localhost") lines))
-      (is (some #(= "version: \"1.0\"" %) lines)))))
+    ;; app has multiple keys so stays nested, but config.server.host collapses within it
+    (is (= #{"app:" "  name: MyApp" "  config.server.host: localhost" "version: \"1.0\""}
+           (set (str/split-lines
+                  (toon/encode {"app" {"name" "MyApp"
+                                       "config" {"server" {"host" "localhost"}}}
+                                "version" "1.0"}
+                               {:key-collapsing :safe})))))))
 
 
 ;; ============================================================================
@@ -237,10 +221,8 @@
 
 (deftest key-collapsing-multiple-chains-same-prefix-test
   (testing "Collapses multiple chains with same prefix"
-    (let [data {"user" {"profile" {"name" "Alice"}}
-                "user2" {"profile" {"name" "Bob"}}}
-          result (toon/encode data {:key-collapsing :safe})
-          lines (str/split-lines result)]
-      (is (= 2 (count lines)))
-      (is (some #(= "user.profile.name: Alice" %) lines))
-      (is (some #(= "user2.profile.name: Bob" %) lines)))))
+    (is (= #{"user.profile.name: Alice" "user2.profile.name: Bob"}
+           (set (str/split-lines
+                  (toon/encode {"user" {"profile" {"name" "Alice"}}
+                                "user2" {"profile" {"name" "Bob"}}}
+                               {:key-collapsing :safe})))))))

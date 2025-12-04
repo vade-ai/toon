@@ -208,25 +208,22 @@
 
 (deftest parse-simple-bracket-segment-test
   (testing "Parse simple bracket with length"
-    (let [result (parser/bracket-segment "3")]
-      (is (= 3 (:length result)))
-      (is (= "," (:delimiter result))))))
+    (is (= {:length 3 :delimiter ","}
+           (parser/bracket-segment "3")))))
 
 
 
 
 (deftest parse-bracket-with-pipe-delimiter-test
   (testing "Parse bracket with pipe delimiter"
-    (let [result (parser/bracket-segment "3|")]
-      (is (= 3 (:length result)))
-      (is (= "|" (:delimiter result))))))
+    (is (= {:length 3 :delimiter "|"}
+           (parser/bracket-segment "3|")))))
 
 
 (deftest parse-bracket-with-tab-delimiter-test
   (testing "Parse bracket with tab delimiter"
-    (let [result (parser/bracket-segment (str "3" \tab))]
-      (is (= 3 (:length result)))
-      (is (= "\t" (:delimiter result))))))
+    (is (= {:length 3 :delimiter "\t"}
+           (parser/bracket-segment (str "3" \tab))))))
 
 
 
@@ -261,60 +258,46 @@
 
 (deftest parse-simple-array-header-test
   (testing "Parse simple array header without key"
-    (let [result (parser/array-header-line "[3]:")]
-      (is (= 3 (:length result)))
-      (is (= "," (:delimiter result)))
-      (is (nil? (:key result)))
-      (is (nil? (:fields result)))
-      (is (nil? (:inline-values result))))))
+    (is (= {:length 3 :delimiter ","}
+           (parser/array-header-line "[3]:")))))
 
 
 (deftest parse-array-header-with-key-test
   (testing "Parse array header with key"
-    (let [result (parser/array-header-line "items[2]:")]
-      (is (= "items" (:key result)))
-      (is (= 2 (:length result))))))
+    (is (= {:key "items" :length 2 :delimiter ","}
+           (parser/array-header-line "items[2]:")))))
 
 
 (deftest parse-array-header-with-fields-test
   (testing "Parse array header with field list"
-    (let [result (parser/array-header-line "[2]{id,name}:")]
-      (is (= 2 (:length result)))
-      (is (= ["id" "name"] (:fields result))))))
+    (is (= {:length 2 :delimiter "," :fields ["id" "name"]}
+           (parser/array-header-line "[2]{id,name}:")))))
 
 
 (deftest parse-array-header-with-key-and-fields-test
   (testing "Parse array header with key and fields"
-    (let [result (parser/array-header-line "users[2]{id,name}:")]
-      (is (= "users" (:key result)))
-      (is (= 2 (:length result)))
-      (is (= ["id" "name"] (:fields result))))))
+    (is (= {:key "users" :length 2 :delimiter "," :fields ["id" "name"]}
+           (parser/array-header-line "users[2]{id,name}:")))))
 
 
 (deftest parse-array-header-with-inline-values-test
   (testing "Parse array header with inline values"
-    (let [result (parser/array-header-line "[3]: a,b,c")]
-      (is (= 3 (:length result)))
-      (is (= "a,b,c" (:inline-values result))))))
+    (is (= {:length 3 :delimiter "," :inline-values "a,b,c"}
+           (parser/array-header-line "[3]: a,b,c")))))
 
 
 
 
 (deftest parse-array-header-with-delimiter-test
   (testing "Parse array header with pipe delimiter"
-    (let [result (parser/array-header-line "[3|]:")]
-      (is (= 3 (:length result)))
-      (is (= "|" (:delimiter result))))))
+    (is (= {:length 3 :delimiter "|"}
+           (parser/array-header-line "[3|]:")))))
 
 
 (deftest parse-array-header-complex-test
   (testing "Parse complex array header with all features"
-    (let [result (parser/array-header-line "data[5|]{a,b,c}: 1|2|3")]
-      (is (= "data" (:key result)))
-      (is (= 5 (:length result)))
-      (is (= "|" (:delimiter result)))
-      (is (= ["a" "b" "c"] (:fields result)))
-      (is (= "1|2|3" (:inline-values result))))))
+    (is (= {:key "data" :length 5 :delimiter "|" :fields ["a" "b" "c"] :inline-values "1|2|3"}
+           (parser/array-header-line "data[5|]{a,b,c}: 1|2|3")))))
 
 
 (deftest parse-invalid-array-header-test
@@ -365,14 +348,14 @@
 
 (deftest parse-zero-length-array-header-test
   (testing "Parse array header with zero length"
-    (let [result (parser/array-header-line "[0]:")]
-      (is (= 0 (:length result))))))
+    (is (= {:length 0 :delimiter ","}
+           (parser/array-header-line "[0]:")))))
 
 
 (deftest parse-large-array-length-test
   (testing "Parse array header with large length"
-    (let [result (parser/array-header-line "[1000]:")]
-      (is (= 1000 (:length result))))))
+    (is (= {:length 1000 :delimiter ","}
+           (parser/array-header-line "[1000]:")))))
 
 
 (deftest find-closing-quote-test

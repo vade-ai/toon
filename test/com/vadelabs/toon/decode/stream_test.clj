@@ -11,7 +11,6 @@
     [clojure.core.async :as async]
     [clojure.string :as str]
     [clojure.test :refer [deftest is testing are]]
-    [com.vadelabs.toon.decode.events :as events]
     [com.vadelabs.toon.core :as toon]))
 
 
@@ -152,9 +151,13 @@
 
 (deftest test-allow-count-mismatch-non-strict
   (testing "allow count mismatch in non-strict mode"
-    (let [events (events->vec (toon/events "items[2]:\n  - Apple" {:strict false}))]
-      (is (some? events))
-      (is (= {:type :start-object} (first events))))))
+    (is (= [{:type :start-object}
+            {:type :key :key "items"}
+            {:type :start-array :length 2}
+            {:type :primitive :value "Apple"}
+            {:type :end-array}
+            {:type :end-object}]
+           (events->vec (toon/events "items[2]:\n  - Apple" {:strict false}))))))
 
 
 ;; ============================================================================
@@ -312,41 +315,33 @@
 
 (deftest test-unquoted-key-wasquoted
   (testing "Unquoted key has was-quoted nil (not present)"
-    (let [input "name: Alice"
-          events (events->vec (toon/events input))
-          key-event (->> events (filter events/key-event?) first)]
-      (is (some? key-event))
-      (is (= "name" (events/event-key key-event)))
-      (is (not (events/was-quoted key-event))
-          "unquoted key should have was-quoted nil/falsy"))))
+    (is (= [{:type :start-object}
+            {:type :key :key "name"}  ;; No :was-quoted key for unquoted
+            {:type :primitive :value "Alice"}
+            {:type :end-object}]
+           (events->vec (toon/events "name: Alice"))))))
 
 
 (deftest test-quoted-key-wasquoted
   (testing "Quoted key has was-quoted true"
-    (let [input "\"user.name\": Alice"
-          events (events->vec (toon/events input))
-          key-event (->> events (filter events/key-event?) first)]
-      (is (some? key-event))
-      (is (= "user.name" (events/event-key key-event)))
-      (is (true? (events/was-quoted key-event))
-          "quoted key should have was-quoted true"))))
+    (is (= [{:type :start-object}
+            {:type :key :key "user.name" :was-quoted true}
+            {:type :primitive :value "Alice"}
+            {:type :end-object}]
+           (events->vec (toon/events "\"user.name\": Alice"))))))
 
 
 (deftest test-mixed-quoted-unquoted-keys
   (testing "Object with mix of quoted and unquoted keys"
-    (let [input "name: Alice\n\"user.id\": 123\nage: 30"
-          events (events->vec (toon/events input))
-          key-events (filterv events/key-event? events)]
-      (is (= 3 (count key-events)))
-      ;; First key: unquoted
-      (is (= "name" (events/event-key (nth key-events 0))))
-      (is (not (events/was-quoted (nth key-events 0))))
-      ;; Second key: quoted
-      (is (= "user.id" (events/event-key (nth key-events 1))))
-      (is (true? (events/was-quoted (nth key-events 1))))
-      ;; Third key: unquoted
-      (is (= "age" (events/event-key (nth key-events 2))))
-      (is (not (events/was-quoted (nth key-events 2)))))))
+    (is (= [{:type :start-object}
+            {:type :key :key "name"}
+            {:type :primitive :value "Alice"}
+            {:type :key :key "user.id" :was-quoted true}
+            {:type :primitive :value 123.0}
+            {:type :key :key "age"}
+            {:type :primitive :value 30.0}
+            {:type :end-object}]
+           (events->vec (toon/events "name: Alice\n\"user.id\": 123\nage: 30"))))))
 
 
 ;; ============================================================================
@@ -355,16 +350,44 @@
 
 (deftest test-array-length-property
   (testing "start-array events include length property"
-    (are [input expected-length]
-        (let [events (events->vec (toon/events input))
-              start-array (->> events (filter events/start-array?) first)]
-          (and (some? start-array)
-               (= expected-length (events/length start-array))))
+    (are [input expected]
+        (= expected (events->vec (toon/events input)))
 
-      "[3]: a,b,c"        3
-      "[0]"               0
-      "tags[2]: a,b"      2
-      "[2]{id,name}:\n  1,Alice\n  2,Bob" 2)))
+      "[3]: a,b,c"
+      [{:type :start-array :length 3}
+       {:type :primitive :value "a"}
+       {:type :primitive :value "b"}
+       {:type :primitive :value "c"}
+       {:type :end-array}]
+
+      "[0]"
+      [{:type :start-array :length 0}
+       {:type :end-array}]
+
+      "tags[2]: a,b"
+      [{:type :start-object}
+       {:type :key :key "tags"}
+       {:type :start-array :length 2}
+       {:type :primitive :value "a"}
+       {:type :primitive :value "b"}
+       {:type :end-array}
+       {:type :end-object}]
+
+      "[2]{id,name}:\n  1,Alice\n  2,Bob"
+      [{:type :start-array :length 2}
+       {:type :start-object}
+       {:type :key :key "id"}
+       {:type :primitive :value 1.0}
+       {:type :key :key "name"}
+       {:type :primitive :value "Alice"}
+       {:type :end-object}
+       {:type :start-object}
+       {:type :key :key "id"}
+       {:type :primitive :value 2.0}
+       {:type :key :key "name"}
+       {:type :primitive :value "Bob"}
+       {:type :end-object}
+       {:type :end-array}])))
 
 
 ;; ============================================================================
@@ -373,32 +396,34 @@
 
 (deftest test-async-simple-object
   (testing "Async decode of simple object"
-    (let [input "name: Alice\nage: 30"
-          events-ch (toon/events-ch input)
-          events (async-events->vec events-ch)]
-      (is (= 6 (count events)))
-      (is (events/start-object? (first events)))
-      (is (events/end-object? (last events))))))
+    (is (= [{:type :start-object}
+            {:type :key :key "name"}
+            {:type :primitive :value "Alice"}
+            {:type :key :key "age"}
+            {:type :primitive :value 30.0}
+            {:type :end-object}]
+           (async-events->vec (toon/events-ch "name: Alice\nage: 30"))))))
 
 
 (deftest test-async-from-channel
   (testing "Async decode from channel source"
-    (let [lines-ch (async/to-chan! ["name: Alice" "age: 30"])
-          events-ch (toon/events-ch lines-ch)
-          events (async-events->vec events-ch)]
-      (is (= 6 (count events)))
-      (is (events/start-object? (first events)))
-      (is (events/end-object? (last events))))))
+    (is (= [{:type :start-object}
+            {:type :key :key "name"}
+            {:type :primitive :value "Alice"}
+            {:type :key :key "age"}
+            {:type :primitive :value 30.0}
+            {:type :end-object}]
+           (async-events->vec (toon/events-ch (async/to-chan! ["name: Alice" "age: 30"])))))))
 
 
 (deftest test-async-array
   (testing "Async decode of array"
-    (let [input "[3]: a,b,c"
-          events-ch (toon/events-ch input)
-          events (async-events->vec events-ch)]
-      (is (= 5 (count events)))
-      (is (events/start-array? (first events)))
-      (is (events/end-array? (last events))))))
+    (is (= [{:type :start-array :length 3}
+            {:type :primitive :value "a"}
+            {:type :primitive :value "b"}
+            {:type :primitive :value "c"}
+            {:type :end-array}]
+           (async-events->vec (toon/events-ch "[3]: a,b,c"))))))
 
 
 ;; ============================================================================
@@ -407,10 +432,8 @@
 
 (deftest test-lazy-evaluation
   (testing "Events are lazily evaluated"
-    (let [input "name: Alice\nage: 30\ncity: NYC"
-          events (toon/events input)]
-      ;; Take only first 3 events - rest should not be evaluated
-      (is (= 3 (count (take 3 events))))
-      ;; Verify they are the expected events
-      (is (events/start-object? (first events)))
-      (is (events/key-event? (second events))))))
+    ;; Take only first 3 events - rest should not be evaluated
+    (is (= [{:type :start-object}
+            {:type :key :key "name"}
+            {:type :primitive :value "Alice"}]
+           (vec (take 3 (toon/events "name: Alice\nage: 30\ncity: NYC")))))))
