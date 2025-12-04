@@ -222,16 +222,22 @@
   Iterates through all keys and expands those that are expandable,
   leaving others as literal keys.
 
+  Respects :toon/quoted-keys metadata - keys that were originally quoted
+  in the TOON source are never expanded, even if they contain dots.
+
   Returns object with expanded keys."
   [obj strict expand-paths]
-  (reduce-kv
-    (fn [acc key value]
-      (let [expanded-value (expand value strict expand-paths)]
-        (if (expandable-key? key)
-          (expanded-key acc key expanded-value strict)
-          (literal-key acc key expanded-value strict))))
-    {}
-    obj))
+  (let [quoted-keys (get (meta obj) :toon/quoted-keys #{})]
+    (reduce-kv
+      (fn [acc key value]
+        (let [expanded-value (expand value strict expand-paths)
+              ;; Skip expansion for keys that were originally quoted
+              is-quoted? (contains? quoted-keys key)]
+          (if (and (not is-quoted?) (expandable-key? key))
+            (expanded-key acc key expanded-value strict)
+            (literal-key acc key expanded-value strict))))
+      {}
+      obj)))
 
 
 (defn expand
@@ -245,6 +251,7 @@
   - Keys containing dots are split into segments
   - All segments must pass identifier validation
   - Non-eligible keys (with special characters) are left as literal dotted keys
+  - Quoted keys are never expanded (respects :toon/quoted-keys metadata)
   - Deep merge: When multiple dotted keys expand to the same path, their values are merged if both are objects
   - Conflict handling:
     - strict=true: Throws ex-info on conflicts (non-object collision)

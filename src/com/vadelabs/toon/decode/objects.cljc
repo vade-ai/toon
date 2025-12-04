@@ -28,10 +28,14 @@
     - list-item-fn: List item decoder function
 
   Returns:
-    [array-key, decoded-array, new-cursor]"
+    [array-key, was-quoted, decoded-array, new-cursor]"
   [content cursor depth strict list-item-fn]
   (let [header-info (parser/array-header-line content)
-        array-key (:key header-info)
+        raw-key (:key header-info)
+        ;; Process array key through key-token to handle quoted keys
+        {:keys [key was-quoted]} (if raw-key
+                                   (parser/key-token raw-key)
+                                   {:key nil :was-quoted false})
         cursor-after-header (scanner/advance-cursor cursor)
         nested-depth (inc depth)
         [decoded-array final-cursor] (cond
@@ -42,7 +46,7 @@
                                        ;; List array
                                        :else
                                        (arrays/list-array header-info cursor-after-header nested-depth strict list-item-fn))]
-    [array-key decoded-array final-cursor]))
+    [key was-quoted decoded-array final-cursor]))
 
 
 (defn- decode-nested-object-or-nil
@@ -79,13 +83,17 @@
     - strict: Strict mode flag
 
   Returns:
-    [array-key, decoded-array, new-cursor]"
+    [array-key, was-quoted, decoded-array, new-cursor]"
   [content cursor strict]
   (let [header-info (parser/array-header-line content)
-        array-key (:key header-info)
+        raw-key (:key header-info)
+        ;; Process array key through key-token to handle quoted keys
+        {:keys [key was-quoted]} (if raw-key
+                                   (parser/key-token raw-key)
+                                   {:key nil :was-quoted false})
         decoded-array (arrays/inline-primitive-array header-info strict)
         new-cursor (scanner/advance-cursor cursor)]
-    [array-key decoded-array new-cursor]))
+    [key was-quoted decoded-array new-cursor]))
 
 
 (defn- decode-inline-primitive
@@ -120,52 +128,73 @@
     - list-item-fn: Function to decode list items (for dependency injection)
 
   Returns:
-    [decoded-object, new-cursor]"
+    [decoded-object, new-cursor]
+
+  The returned object includes metadata with :toon/quoted-keys containing
+  a set of keys that were originally quoted in the TOON source. This is used
+  by path expansion to avoid expanding quoted dotted keys."
   ([cursor depth delimiter strict list-item-fn]
    (loop [remaining-cursor cursor
-          obj {}]
+          obj {}
+          quoted-keys #{}]
      (let [line (scanner/peek-at-depth remaining-cursor depth)]
        (if-not line
-         ;; No more lines at this depth
-         [obj remaining-cursor]
+         ;; No more lines at this depth - attach quoted keys metadata
+         [(if (seq quoted-keys)
+            (with-meta obj {:toon/quoted-keys quoted-keys})
+            obj)
+          remaining-cursor]
          (let [content (:content line)
                colon-pos (str-utils/unquoted-char content \:)]
            (if-not colon-pos
              ;; No colon: not a key-value line, end of object
-             [obj remaining-cursor]
+             [(if (seq quoted-keys)
+                (with-meta obj {:toon/quoted-keys quoted-keys})
+                obj)
+              remaining-cursor]
              (let [key-part (subs content 0 colon-pos)
                    value-part (str/trim (subs content (inc colon-pos)))
-                   k (:key (parser/key-token key-part))
+                   {:keys [key was-quoted]} (parser/key-token key-part)
                    has-array-header? (str/includes? key-part "[")
-                   has-inline-value? (not (empty? value-part))]
+                   has-inline-value? (not (empty? value-part))
+                   ;; Track quoted keys for path expansion
+                   quoted-keys' (if was-quoted (conj quoted-keys key) quoted-keys)]
                (cond
                  ;; Nested array (no inline value, has array header)
                  (and (not has-inline-value?) has-array-header?)
-                 (let [[array-key decoded-array final-cursor]
-                       (decode-nested-array content remaining-cursor depth strict list-item-fn)]
+                 (let [[array-key array-was-quoted decoded-array final-cursor]
+                       (decode-nested-array content remaining-cursor depth strict list-item-fn)
+                       ;; Use array key's quoted status, not key-part's
+                       quoted-keys'' (if array-was-quoted (conj quoted-keys array-key) quoted-keys)]
                    (recur final-cursor
-                          (assoc obj array-key decoded-array)))
+                          (assoc obj array-key decoded-array)
+                          quoted-keys''))
 
                  ;; Nested object or nil (no inline value, no array header)
                  (not has-inline-value?)
-                 (let [[key value final-cursor]
-                       (decode-nested-object-or-nil k remaining-cursor depth delimiter strict list-item-fn)]
+                 (let [[nested-key value final-cursor]
+                       (decode-nested-object-or-nil key remaining-cursor depth delimiter strict list-item-fn)]
                    (recur final-cursor
-                          (assoc obj key value)))
+                          (assoc obj nested-key value)
+                          quoted-keys'))
 
                  ;; Inline array (has inline value, has array header)
                  has-array-header?
-                 (let [[array-key decoded-array new-cursor]
-                       (decode-inline-array content remaining-cursor strict)]
+                 (let [[array-key array-was-quoted decoded-array new-cursor]
+                       (decode-inline-array content remaining-cursor strict)
+                       ;; Use array key's quoted status, not key-part's
+                       quoted-keys'' (if array-was-quoted (conj quoted-keys array-key) quoted-keys)]
                    (recur new-cursor
-                          (assoc obj array-key decoded-array)))
+                          (assoc obj array-key decoded-array)
+                          quoted-keys''))
 
                  ;; Inline primitive (has inline value, no array header)
                  :else
-                 (let [[key value new-cursor]
-                       (decode-inline-primitive k value-part remaining-cursor strict)]
+                 (let [[_ value new-cursor]
+                       (decode-inline-primitive key value-part remaining-cursor strict)]
                    (recur new-cursor
-                          (assoc obj key value))))))))))))
+                          (assoc obj key value)
+                          quoted-keys')))))))))))
 
 
 ;; ============================================================================
@@ -191,7 +220,10 @@
     - list-item-fn: Function to decode list items (for dependency injection)
 
   Returns:
-    [decoded-object, new-cursor]"
+    [decoded-object, new-cursor]
+
+  The returned object includes metadata with :toon/quoted-keys if any keys
+  were originally quoted in the TOON source."
   [line cursor depth delimiter strict list-item-fn]
   (let [content (:content line)
         ;; Remove list marker prefix
@@ -207,13 +239,20 @@
                        :examples ["- name: Alice" "- id: 123" "- active: true"]})))
     (let [key-part (subs after-marker 0 colon-pos)
           value-part (str/trim (subs after-marker (inc colon-pos)))
-          first-key (:key (parser/key-token key-part))
+          {:keys [key was-quoted]} (parser/key-token key-part)
           first-value (if (empty? value-part)
                         nil
                         (parser/primitive-token value-part strict))
           ;; Advance past the hyphen line
           cursor-after-first (scanner/advance-cursor cursor)
           ;; Decode remaining key-values at depth+1
-          [rest-obj remaining-cursor] (object cursor-after-first (inc depth) delimiter strict list-item-fn)]
-      ;; Merge first key-value with rest
-      [(assoc rest-obj first-key first-value) remaining-cursor])))
+          [rest-obj remaining-cursor] (object cursor-after-first (inc depth) delimiter strict list-item-fn)
+          ;; Merge first key-value with rest
+          merged-obj (assoc rest-obj key first-value)
+          ;; Merge quoted keys metadata
+          rest-quoted (get (meta rest-obj) :toon/quoted-keys #{})
+          all-quoted (if was-quoted (conj rest-quoted key) rest-quoted)]
+      [(if (seq all-quoted)
+         (with-meta merged-obj {:toon/quoted-keys all-quoted})
+         merged-obj)
+       remaining-cursor])))

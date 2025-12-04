@@ -247,3 +247,90 @@
       (is (= {"app" {"name" "MyApp"
                      "config" {"server" {"host" "localhost"}}}
               "version" 2.0} result)))))
+
+
+;; ============================================================================
+;; Quoted Key Tests - Keys that should NOT be expanded
+;; ============================================================================
+
+(deftest quoted-key-not-expanded-test
+  (testing "Quoted dotted key is not expanded"
+    (let [toon-str "\"data.metadata\": value"
+          result (toon/decode toon-str {:expand-paths :safe})]
+      ;; Quoted key should remain as literal, not expanded
+      (is (= {"data.metadata" "value"} result)))))
+
+
+(deftest quoted-key-mixed-with-unquoted-test
+  (testing "Mix of quoted and unquoted dotted keys"
+    (let [toon-str "\"data.metadata\": literal\nuser.name: Alice"
+          result (toon/decode toon-str {:expand-paths :safe})]
+      ;; Quoted key stays literal, unquoted key gets expanded
+      (is (= {"data.metadata" "literal"
+              "user" {"name" "Alice"}} result)))))
+
+
+(deftest quoted-key-in-nested-object-test
+  (testing "Quoted key in nested object is not expanded"
+    (let [toon-str "config:\n  \"server.host\": localhost\n  port: 8080"
+          result (toon/decode toon-str {:expand-paths :safe})]
+      (is (= {"config" {"server.host" "localhost"
+                        "port" 8080.0}} result)))))
+
+
+(deftest quoted-key-in-list-item-test
+  (testing "Quoted key in list item is not expanded"
+    (let [toon-str "[2]:\n  - \"user.name\": Alice\n  - \"user.name\": Bob"
+          result (toon/decode toon-str {:expand-paths :safe})]
+      (is (= [{"user.name" "Alice"}
+              {"user.name" "Bob"}] result)))))
+
+
+(deftest quoted-vs-unquoted-different-keys-test
+  (testing "Quoted and unquoted dotted keys with different names"
+    ;; Note: Same key string (e.g., a.b and "a.b") would create duplicate keys
+    ;; which isn't valid. This test uses different keys to demonstrate the behavior.
+    (let [toon-str "a.b: expanded\n\"c.d\": literal"
+          result (toon/decode toon-str {:expand-paths :safe})]
+      ;; Unquoted key expands, quoted key stays literal
+      (is (= {"a" {"b" "expanded"}
+              "c.d" "literal"} result)))))
+
+
+(deftest quoted-key-complex-dots-test
+  (testing "Quoted key with multiple dots stays literal"
+    (let [toon-str "\"a.b.c.d.e\": deep-literal"
+          result (toon/decode toon-str {:expand-paths :safe})]
+      (is (= {"a.b.c.d.e" "deep-literal"} result)))))
+
+
+(deftest quoted-key-with-array-value-test
+  (testing "Quoted key with array value is not expanded"
+    (let [toon-str "\"config.tags\"[3]: a,b,c"
+          result (toon/decode toon-str {:expand-paths :safe})]
+      (is (= {"config.tags" ["a" "b" "c"]} result)))))
+
+
+(deftest quoted-key-roundtrip-preservation-test
+  (testing "Roundtrip preserves structure when key collapsing creates dotted keys"
+    ;; When we encode with key-collapsing, then decode with expand-paths,
+    ;; we should get back the original structure
+    (let [original {"user" {"profile" {"name" "Alice"}}}
+          encoded (toon/encode original {:key-collapsing :safe})
+          decoded (toon/decode encoded {:expand-paths :safe})]
+      (is (= "user.profile.name: Alice" encoded))
+      (is (= original decoded)))))
+
+
+(deftest quoted-key-without-expansion-test
+  (testing "Quoted key without expansion enabled stays literal"
+    (let [toon-str "\"data.config\": value"
+          result (toon/decode toon-str)]  ;; No :expand-paths option
+      (is (= {"data.config" "value"} result)))))
+
+
+(deftest unquoted-key-without-expansion-test
+  (testing "Unquoted dotted key without expansion enabled stays literal"
+    (let [toon-str "data.config: value"
+          result (toon/decode toon-str)]  ;; No :expand-paths option
+      (is (= {"data.config" "value"} result)))))
