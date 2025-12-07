@@ -3,16 +3,14 @@
 
   Handles inline, tabular, and list array formats."
   (:require
-    [clojure.string :as str]
-    [com.vadelabs.toon.constants :as const]
-    [com.vadelabs.toon.decode.parser :as parser]
-    [com.vadelabs.toon.decode.scanner :as scanner]
-    [com.vadelabs.toon.utils :as str-utils]))
-
+   [clojure.string :as str]
+   [com.vadelabs.toon.constants :as const]
+   [com.vadelabs.toon.decode.parser :as parser]
+   [com.vadelabs.toon.decode.scanner :as scanner]
+   [com.vadelabs.toon.utils :as str-utils]))
 
 ;; Forward declaration for mutual recursion
 (declare list-item)
-
 
 ;; ============================================================================
 ;; Validation Helpers
@@ -48,7 +46,6 @@
                        :actual actual
                        :suggestion (str "Update header to " header-fix " or add " (- expected actual) " more" type-suffix)})))))
 
-
 ;; ============================================================================
 ;; Inline Primitive Array Decoding
 ;; ============================================================================
@@ -77,7 +74,6 @@
        (validate-array-length! length (count values) strict :inline)
        values))))
 
-
 ;; ============================================================================
 ;; Tabular Array Decoding
 ;; ============================================================================
@@ -96,7 +92,6 @@
   (let [tokens (parser/delimited-values row-content delimiter)]
     (mapv #(parser/primitive-token % strict) tokens)))
 
-
 (defn- analyze-line-positions
   "Analyzes positions of colon and delimiter in a line.
 
@@ -111,7 +106,6 @@
     {:colon-pos (str-utils/unquoted-char content \:)
      :delim-pos (str-utils/unquoted-char content delim-char)}))
 
-
 (defn- delimiter-before-colon?
   "Checks if delimiter appears before colon in position analysis.
 
@@ -122,7 +116,6 @@
     Boolean (true if both present and delimiter comes first)"
   [{:keys [colon-pos delim-pos]}]
   (and colon-pos delim-pos (< delim-pos colon-pos)))
-
 
 (defn- peek-next-line-has-delimiter-first?
   "Checks if next line at same depth has delimiter before colon.
@@ -138,7 +131,6 @@
   (if-let [next-line (scanner/peek-at-depth cursor depth)]
     (delimiter-before-colon? (analyze-line-positions (:content next-line) delimiter))
     false))
-
 
 (defn- row-or-key-value?
   "Determines if a line is a data row or key-value line.
@@ -185,7 +177,6 @@
        ;; Default to key-value
        :else
        :key-value))))
-
 
 (defn tabular-array
   "Decodes a tabular array into objects.
@@ -235,7 +226,6 @@
                       (conj objects obj)
                       (inc row-count))))))))))
 
-
 ;; ============================================================================
 ;; List Array Decoding
 ;; ============================================================================
@@ -272,8 +262,9 @@
          (do
            (validate-array-length! length item-count strict :list)
            [items remaining-cursor])
-         ;; Check if line starts with list marker
-         (if-not (str/starts-with? (:content line) const/list-item-prefix)
+         ;; Check if line starts with list marker (prefix "- " or bare "-")
+         (if-not (or (str/starts-with? (:content line) const/list-item-prefix)
+                     (= (:content line) const/list-item-marker))
            ;; No list marker: end of list
            (do
              (validate-array-length! length item-count strict :list)

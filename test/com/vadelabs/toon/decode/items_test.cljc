@@ -1,11 +1,10 @@
 (ns com.vadelabs.toon.decode.items-test
   "Tests for list item type detection and decoding."
   (:require
-    #?(:clj [clojure.test :refer [deftest is testing]]
-       :cljs [cljs.test :refer [deftest is testing]])
-    [com.vadelabs.toon.decode.items :as items]
-    [com.vadelabs.toon.decode.scanner :as scanner]))
-
+   #?(:clj [clojure.test :refer [deftest is testing]]
+      :cljs [cljs.test :refer [deftest is testing]])
+   [com.vadelabs.toon.decode.items :as items]
+   [com.vadelabs.toon.decode.scanner :as scanner]))
 
 ;; ============================================================================
 ;; List Item Type Detection Tests
@@ -26,7 +25,6 @@
       (is (= :primitive (#'items/list-item-type "42")))
       (is (= :primitive (#'items/list-item-type "true"))))))
 
-
 ;; ============================================================================
 ;; List Item Decoding Tests
 ;; ============================================================================
@@ -40,7 +38,6 @@
           [result _] (items/list-item line cursor 0 "," true)]
       (is (= "hello" result)))))
 
-
 (deftest list-item-array-test
   (testing "Decode array list item"
     (let [input "- [3]: 1,2,3"
@@ -49,7 +46,6 @@
           [line _] (scanner/next-cursor cursor)
           [result _] (items/list-item line cursor 0 "," true)]
       (is (= [1.0 2.0 3.0] result)))))
-
 
 (deftest list-item-object-test
   (testing "Decode object list item"
@@ -60,7 +56,6 @@
           [result _] (items/list-item line cursor 0 "," true)]
       (is (= {"id" 1.0 "name" "Alice"} result)))))
 
-
 (deftest list-item-multiline-object-test
   (testing "Decode multi-line object list item"
     (let [input "- name: Bob\n  age: 25\n  active: true"
@@ -69,3 +64,26 @@
           [line _] (scanner/next-cursor cursor)
           [result _] (items/list-item line cursor 0 "," true)]
       (is (= {"name" "Bob" "age" 25.0 "active" true} result)))))
+
+;; ============================================================================
+;; Bare List Item Tests
+;; ============================================================================
+
+(deftest bare-list-item-test
+  (testing "Bare list marker decodes to empty object"
+    (let [input "-"
+          scan-result (scanner/to-parsed-lines input)
+          cursor (scanner/cursor-from-scan-result scan-result)
+          [line _] (scanner/next-cursor cursor)
+          [result _] (items/list-item line cursor 0 "," true)]
+      (is (= {} result)))))
+
+(deftest bare-list-item-with-trailing-space-test
+  (testing "Bare list marker with trailing space decodes to empty object"
+    ;; Note: scanner trims content, so "- " becomes "-"
+    (let [input "- "
+          scan-result (scanner/to-parsed-lines input)
+          cursor (scanner/cursor-from-scan-result scan-result)
+          [line _] (scanner/next-cursor cursor)
+          [result _] (items/list-item line cursor 0 "," true)]
+      (is (= {} result)))))

@@ -1,10 +1,9 @@
 (ns com.vadelabs.toon.integration-test
   (:require
-    [clojure.string :as str]
-    #?(:clj [clojure.test :refer [deftest is testing]]
-       :cljs [cljs.test :refer [deftest is testing]])
-    [com.vadelabs.toon.core :as toon]))
-
+   [clojure.string :as str]
+   #?(:clj [clojure.test :refer [deftest is testing]]
+      :cljs [cljs.test :refer [deftest is testing]])
+   [com.vadelabs.toon.core :as toon]))
 
 ;; ============================================================================
 ;; Simple Value Encoding Tests
@@ -18,13 +17,11 @@
     (is (= "false" (toon/encode false)))
     (is (= "null" (toon/encode nil)))))
 
-
 (deftest encode-simple-array-test
   (testing "Encode simple arrays with headers at root level"
     (is (= "[3]: 1,2,3" (toon/encode [1 2 3])))
     (is (= "[3]: a,b,c" (toon/encode ["a" "b" "c"])))
     (is (= "[0]" (toon/encode [])))))
-
 
 ;; ============================================================================
 ;; Simple Object Encoding Tests
@@ -36,13 +33,11 @@
       (is (= #{"name: Alice" "age: 30"}
              (set (str/split-lines result)))))))
 
-
 (deftest encode-object-with-array-test
   (testing "Encode object with array value"
     (let [result (toon/encode {:name "Ada" :tags [:reading :gaming]})]
       (is (str/includes? result "name: Ada"))
       (is (str/includes? result "tags[2]: reading,gaming")))))
-
 
 ;; ============================================================================
 ;; Array of Objects Tests
@@ -55,14 +50,12 @@
           result (toon/encode data)]
       (is (= "[2]{id,name}:\n  1,Alice\n  2,Bob" result)))))
 
-
 (deftest encode-array-of-objects-tabular-test
   (testing "Encode array of objects in tabular format"
     (let [data [{:x 10 :y 20}
                 {:x 30 :y 40}]
           result (toon/encode data)]
       (is (= "[2]{x,y}:\n  10,20\n  30,40" result)))))
-
 
 ;; ============================================================================
 ;; Nested Structure Tests
@@ -73,7 +66,6 @@
     (let [data {:user {:name "Alice" :age 30}}
           result (toon/encode data)]
       (is (= "user:\n  name: Alice\n  age: 30" result)))))
-
 
 (deftest encode-complex-nested-structure-test
   (testing "Encode complex nested structure from README example"
@@ -92,7 +84,6 @@
       (is (str/includes? result "notifications: true"))
       (is (str/includes? result "theme: dark")))))
 
-
 ;; ============================================================================
 ;; Delimiter Option Tests
 ;; ============================================================================
@@ -103,13 +94,11 @@
           result (toon/encode data {:delimiter "\t"})]
       (is (= "tags[3\t]: a\tb\tc" result)))))
 
-
 (deftest encode-with-pipe-delimiter-test
   (testing "Encode with pipe delimiter"
     (let [data {:items [1 2 3]}
           result (toon/encode data {:delimiter "|"})]
       (is (= "items[3|]: 1|2|3" result)))))
-
 
 ;; ============================================================================
 ;; Indent Option Tests
@@ -120,7 +109,6 @@
     (let [data {:user {:name "Alice"}}
           result (toon/encode data {:indent 4})]
       (is (= "user:\n    name: Alice" result)))))
-
 
 ;; ============================================================================
 ;; Normalization Integration Tests
@@ -133,20 +121,17 @@
       (is (= #{"name: Alice" "age: 30"}
              (set (str/split-lines result)))))))
 
-
 (deftest encode-with-namespaced-keywords-test
   (testing "Namespaced keywords preserve namespace"
     (let [data {:user/id 123}
           result (toon/encode data)]
       (is (= "user/id: 123" result)))))
 
-
 (deftest encode-with-sets-test
   (testing "Sets are normalized to sorted vectors"
     (let [data {:tags #{:c :a :b}}
           result (toon/encode data)]
       (is (= "tags[3]: a,b,c" result)))))
-
 
 ;; ============================================================================
 ;; Quoting Integration Tests
@@ -158,13 +143,11 @@
           result (toon/encode data)]
       (is (= "desc: \"hello, world\"" result)))))
 
-
 (deftest encode-with-quotes-in-values-test
   (testing "Values containing quotes are escaped (JSON-style)"
     (let [data {:msg "say \"hi\""}
           result (toon/encode data)]
       (is (= "msg: \"say \\\"hi\\\"\"" result)))))
-
 
 ;; ============================================================================
 ;; Array of Arrays Tests
@@ -175,7 +158,6 @@
     (let [data [[1 2] [3 4]]
           result (toon/encode data)]
       (is (= "[2]:\n  - [2]: 1,2\n  - [2]: 3,4" result)))))
-
 
 ;; ============================================================================
 ;; Real-World Example Tests
@@ -188,14 +170,12 @@
       (is (str/includes? result "name: Ada"))
       (is (str/includes? result "tags[2]: reading,gaming")))))
 
-
 (deftest encode-readme-example-2-test
   (testing "README example 2: array of objects"
     (let [data [{:id 1 :name "Alice"}
                 {:id 2 :name "Bob"}]
           result (toon/encode data)]
       (is (= "[2]{id,name}:\n  1,Alice\n  2,Bob" result)))))
-
 
 ;; ============================================================================
 ;; Edge Cases
@@ -205,18 +185,15 @@
   (testing "Encode empty object"
     (is (= "" (toon/encode {})))))
 
-
 (deftest encode-empty-array-test
   (testing "Encode empty array with header at root level"
     (is (= "[0]" (toon/encode [])))))
-
 
 (deftest encode-object-with-nil-values-test
   (testing "Encode object with nil values"
     (let [result (toon/encode {:name nil :age 30})]
       (is (= #{"name: null" "age: 30"}
              (set (str/split-lines result)))))))
-
 
 ;; ============================================================================
 ;; Mixed Array Tests (from TypeScript reference)
@@ -228,13 +205,11 @@
           result (toon/encode data)]
       (is (= "items[3]:\n  - 1\n  - a: 1\n  - text" result)))))
 
-
 (deftest encode-mixed-array-objects-and-arrays-test
   (testing "Mixed array with objects and arrays uses list format"
     (let [data {:items [{:a 1} [1 2]]}
           result (toon/encode data)]
       (is (= "items[2]:\n  - a: 1\n  - [2]: 1,2" result)))))
-
 
 ;; ============================================================================
 ;; Key Quoting Tests
@@ -244,21 +219,17 @@
   (testing "Keys with spaces are quoted"
     (is (= "\"user name\": Alice" (toon/encode {"user name" "Alice"})))))
 
-
 (deftest encode-key-with-colon-test
   (testing "Keys with colons are quoted"
     (is (= "\"key:value\": test" (toon/encode {"key:value" "test"})))))
-
 
 (deftest encode-key-starting-with-digit-test
   (testing "Keys starting with digits are quoted"
     (is (= "\"123\": value" (toon/encode {"123" "value"})))))
 
-
 (deftest encode-key-with-brackets-test
   (testing "Keys with brackets are quoted"
     (is (= "\"[special]\": value" (toon/encode {"[special]" "value"})))))
-
 
 (deftest encode-valid-unquoted-keys-test
   (testing "Valid keys remain unquoted"
@@ -267,7 +238,6 @@
       (is (str/includes? result "user_id: \"123\""))
       (is (str/includes? result "user.name: Bob")))))
 
-
 (deftest encode-tabular-array-with-special-keys-test
   (testing "Tabular array with special character keys"
     (let [data [{"user name" "Alice" "user id" 1}
@@ -275,14 +245,12 @@
           result (toon/encode data)]
       (is (= "[2]{\"user name\",\"user id\"}:\n  Alice,1\n  Bob,2" result)))))
 
-
 (deftest encode-roundtrip-with-special-keys-test
   (testing "Roundtrip with special character keys"
     (let [data {"user name" "Alice" "key:value" "test" "123" "numeric"}
           encoded (toon/encode data)
           decoded (toon/decode encoded)]
       (is (= data decoded)))))
-
 
 ;; ============================================================================
 ;; Leading Zero Value Tests
@@ -292,3 +260,40 @@
   (testing "Values with leading zeros are quoted"
     (is (= "value: \"05\"" (toon/encode {"value" "05"})))
     (is (= "value: \"007\"" (toon/encode {"value" "007"})))))
+
+(deftest decode-leading-zeros-as-strings-test
+  (testing "Unquoted values with leading zeros decode as strings"
+    (is (= {"value" "007"} (toon/decode "value: 007")))
+    (is (= {"value" "00"} (toon/decode "value: 00")))
+    (is (= {"value" "01"} (toon/decode "value: 01")))))
+
+(deftest decode-negative-leading-zeros-as-strings-test
+  (testing "Negative numbers with leading zeros decode as strings"
+    (is (= {"value" "-007"} (toon/decode "value: -007")))
+    (is (= {"value" "-00"} (toon/decode "value: -00")))))
+
+(deftest decode-scientific-notation-test
+  (testing "Scientific notation is parsed as numbers"
+    (is (= {"value" 1.0E10} (toon/decode "value: 1e10")))
+    (is (= {"value" 1.0E-5} (toon/decode "value: 1e-5")))
+    (is (= {"value" 2.5E3} (toon/decode "value: 2.5e+3")))))
+
+(deftest decode-valid-zero-forms-test
+  (testing "Valid zero forms parse correctly"
+    (is (= {"value" 0.0} (toon/decode "value: 0")))
+    (is (= {"value" 0.5} (toon/decode "value: 0.5")))
+    (is (= {"value" 0.0} (toon/decode "value: -0")))))
+
+;; ============================================================================
+;; Bare List Item Tests
+;; ============================================================================
+
+(deftest decode-bare-list-item-test
+  (testing "Bare list marker decodes to empty object"
+    (is (= [{}] (toon/decode "[1]:\n  -")))
+    (is (= [{} {} {}] (toon/decode "[3]:\n  -\n  -\n  -")))))
+
+(deftest decode-mixed-list-items-test
+  (testing "Mixed bare and content list items"
+    (is (= ["hello" {} "world"] (toon/decode "[3]:\n  - hello\n  -\n  - world")))
+    (is (= [{"name" "Ada"} {}] (toon/decode "[2]:\n  - name: Ada\n  -")))))

@@ -1,14 +1,13 @@
 (ns com.vadelabs.toon.decode.items
   "List item type detection and decoding for TOON format."
   (:require
-    [clojure.string :as str]
-    [com.vadelabs.toon.constants :as const]
-    [com.vadelabs.toon.decode.arrays :as arrays]
-    [com.vadelabs.toon.decode.objects :as objects]
-    [com.vadelabs.toon.decode.parser :as parser]
-    [com.vadelabs.toon.decode.scanner :as scanner]
-    [com.vadelabs.toon.utils :as str-utils]))
-
+   [clojure.string :as str]
+   [com.vadelabs.toon.constants :as const]
+   [com.vadelabs.toon.decode.arrays :as arrays]
+   [com.vadelabs.toon.decode.objects :as objects]
+   [com.vadelabs.toon.decode.parser :as parser]
+   [com.vadelabs.toon.decode.scanner :as scanner]
+   [com.vadelabs.toon.utils :as str-utils]))
 
 ;; ============================================================================
 ;; List Item Type Detection
@@ -28,7 +27,6 @@
     :else
     :primitive))
 
-
 ;; ============================================================================
 ;; List Item Decoding
 ;; ============================================================================
@@ -46,24 +44,27 @@
   Returns:
     [decoded-value, new-cursor]"
   [line cursor depth delimiter strict]
-  (let [content (:content line)
-        ;; Remove list marker prefix ("- ")
-        after-marker (subs content (count const/list-item-prefix))
-        item-type (list-item-type after-marker)]
-    (case item-type
-      :array
-      ;; Inline array: "- [3]: a,b,c"
-      (let [header-info (parser/array-header-line after-marker)
-            items (arrays/inline-primitive-array header-info strict)
-            new-cursor (scanner/advance-cursor cursor)]
-        [items new-cursor])
+  (let [content (:content line)]
+    ;; Bare list marker: always an empty object
+    (if (= content const/list-item-marker)
+      [{} (scanner/advance-cursor cursor)]
+      ;; Normal list item with content after "- "
+      (let [after-marker (subs content (count const/list-item-prefix))
+            item-type (list-item-type after-marker)]
+        (case item-type
+          :array
+          ;; Inline array: "- [3]: a,b,c"
+          (let [header-info (parser/array-header-line after-marker)
+                items (arrays/inline-primitive-array header-info strict)
+                new-cursor (scanner/advance-cursor cursor)]
+            [items new-cursor])
 
-      :object
-      ;; Object with first field on hyphen line
-      (objects/object-from-list-item line cursor depth delimiter strict list-item)
+          :object
+          ;; Object with first field on hyphen line
+          (objects/object-from-list-item line cursor depth delimiter strict list-item)
 
-      :primitive
-      ;; Simple primitive value
-      (let [value (parser/primitive-token after-marker strict)
-            new-cursor (scanner/advance-cursor cursor)]
-        [value new-cursor]))))
+          :primitive
+          ;; Simple primitive value
+          (let [value (parser/primitive-token after-marker strict)
+                new-cursor (scanner/advance-cursor cursor)]
+            [value new-cursor]))))))
