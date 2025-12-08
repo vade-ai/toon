@@ -1,10 +1,10 @@
 (ns com.vadelabs.toon.encode.arrays-test
   (:require
-    #?(:clj [clojure.test :refer [deftest is testing]]
-       :cljs [cljs.test :refer [deftest is testing]])
-    [com.vadelabs.toon.encode.arrays :as arr]
-    [com.vadelabs.toon.encode.writer :as writer]))
-
+   #?(:clj [clojure.test :refer [deftest is testing]]
+      :cljs [cljs.test :refer [deftest is testing]])
+   [clojure.string :as str]
+   [com.vadelabs.toon.encode.arrays :as arr]
+   [com.vadelabs.toon.encode.writer :as writer]))
 
 ;; ============================================================================
 ;; Array Header Tests
@@ -16,14 +16,12 @@
     (is (= "[0]" (arr/array-header 0 ",")))
     (is (= "[100]" (arr/array-header 100 ",")))))
 
-
 (deftest array-header-with-delimiter-markers-test
   (testing "Array header includes delimiter marker for non-comma delimiters"
     (is (= "[3]" (arr/array-header 3 ",")))     ; Comma: no marker
     (is (= "[3|]" (arr/array-header 3 "|")))    ; Pipe: shows marker
     (is (= "[3\t]" (arr/array-header 3 "\t")))  ; Tab: shows marker
     (is (= "[3;]" (arr/array-header 3 ";")))))
-
 
 ;; ============================================================================
 ;; Common Keys Extraction Tests
@@ -36,7 +34,6 @@
     (is (= ["x" "y" "z"] (arr/extract-common-keys [{"x" 1 "y" 2 "z" 3}
                                                    {"x" 4 "y" 5 "z" 6}])))))
 
-
 (deftest extract-common-keys-subset-test
   (testing "Extract only common keys when objects have different keys"
     (is (= ["a"] (arr/extract-common-keys [{"a" 1 "b" 2}
@@ -44,23 +41,19 @@
     (is (= ["x" "z"] (arr/extract-common-keys [{"x" 1 "y" 2 "z" 3}
                                                {"x" 4 "z" 5 "w" 6}])))))
 
-
 (deftest extract-common-keys-no-common-test
   (testing "Returns empty when no common keys"
     (is (= [] (arr/extract-common-keys [{"a" 1}
                                         {"b" 2}])))))
 
-
 (deftest extract-common-keys-empty-array-test
   (testing "Returns nil for empty array"
     (is (nil? (arr/extract-common-keys [])))))
-
 
 (deftest extract-common-keys-preserves-order-test
   (testing "Preserves key order from first object"
     (is (= ["c" "b" "a"] (arr/extract-common-keys [{"c" 1 "b" 2 "a" 3}
                                                    {"a" 4 "b" 5 "c" 6}])))))
-
 
 ;; ============================================================================
 ;; Inline Array Encoding Tests
@@ -75,7 +68,6 @@
     (let [w (arr/inline [1.5 2.5 3.5] "," 1 (writer/create))]
       (is (= "  1.5,2.5,3.5" (writer/to-string w))))))
 
-
 (deftest encode-inline-array-strings-test
   (testing "Encode array of simple strings at root"
     (let [w (arr/inline ["a" "b" "c"] "," 0 (writer/create))]
@@ -85,12 +77,10 @@
     (let [w (arr/inline ["a" "b,c" "d"] "," 1 (writer/create))]
       (is (= "  a,\"b,c\",d" (writer/to-string w))))))
 
-
 (deftest encode-inline-array-mixed-primitives-test
   (testing "Encode array of mixed primitive types at root"
     (let [w (arr/inline [1 "two" true nil] "," 0 (writer/create))]
       (is (= "[4]: 1,two,true,null" (writer/to-string w))))))
-
 
 (deftest encode-inline-array-with-tab-delimiter-test
   (testing "Encode array with tab delimiter at root"
@@ -101,12 +91,10 @@
     (let [w (arr/inline ["a,b" "c,d"] "\t" 1 (writer/create))]
       (is (= "  a,b\tc,d" (writer/to-string w))))))
 
-
 (deftest encode-inline-array-indented-test
   (testing "Encode array with indentation (at nested level, no header)"
     (let [w (arr/inline [1 2 3] "," 1 (writer/create))]
       (is (= "  1,2,3" (writer/to-string w))))))
-
 
 ;; ============================================================================
 ;; Tabular Array Header Tests
@@ -117,12 +105,10 @@
     (let [w (arr/tabular-header 2 ["id" "name"] "," 0 (writer/create))]
       (is (= "[2]{id,name}:" (writer/to-string w))))))
 
-
 (deftest encode-tabular-array-header-with-tab-delimiter-test
   (testing "Encode tabular header with tab delimiter"
     (let [w (arr/tabular-header 2 ["x" "y"] "\t" 0 (writer/create))]
       (is (= "[2\t]{x\ty}:" (writer/to-string w))))))
-
 
 ;; ============================================================================
 ;; Tabular Array Row Tests
@@ -139,13 +125,11 @@
           w (arr/tabular-row obj ["id" "name"] "," 0 (writer/create))]
       (is (= "1,null" (writer/to-string w))))))
 
-
 (deftest encode-tabular-array-row-with-quoting-test
   (testing "Encode row with values needing quotes"
     (let [obj {"id" 1 "name" "Alice, Bob"}
           w (arr/tabular-row obj ["id" "name"] "," 0 (writer/create))]
       (is (= "1,\"Alice, Bob\"" (writer/to-string w))))))
-
 
 ;; ============================================================================
 ;; Full Tabular Array Tests
@@ -158,9 +142,6 @@
           w (arr/tabular objects "," 0 (writer/create))]
       (is (= "[2]{id,name}:\n  1,Alice\n  2,Bob" (writer/to-string w))))))
 
-
-
-
 (deftest encode-tabular-array-subset-keys-test
   (testing "Encode tabular array with subset of common keys"
     (let [objects [{"id" 1 "name" "Alice" "extra" 99}
@@ -169,13 +150,11 @@
       ;; Should only include "id" and "name" (common keys)
       (is (= "[2]{id,name}:\n  1,Alice\n  2,Bob" (writer/to-string w))))))
 
-
 (deftest encode-tabular-array-no-common-keys-test
   (testing "Tabular array with no common keys returns writer unchanged"
     (let [objects [{"a" 1} {"b" 2}]
           w (arr/tabular objects "," 0 (writer/create))]
       (is (= "" (writer/to-string w))))))
-
 
 ;; ============================================================================
 ;; Array of Arrays Tests
@@ -187,22 +166,17 @@
           w (arr/of-arrays arrays "," 0 (writer/create))]
       (is (= "[2]:\n  - [2]: 1,2\n  - [2]: 3,4" (writer/to-string w))))))
 
-
-
-
 (deftest encode-array-of-arrays-variable-lengths-test
   (testing "Encode array of arrays with variable lengths"
     (let [arrays [[1 2 3] [4 5] [6]]
           w (arr/of-arrays arrays "," 0 (writer/create))]
       (is (= "[3]:\n  - [3]: 1,2,3\n  - [2]: 4,5\n  - [1]: 6" (writer/to-string w))))))
 
-
 (deftest encode-array-of-arrays-with-tab-delimiter-test
   (testing "Encode array of arrays with tab delimiter"
     (let [arrays [[1 2] [3 4]]
           w (arr/of-arrays arrays "\t" 0 (writer/create))]
       (is (= "[2\t]:\n  - [2\t]: 1\t2\n  - [2\t]: 3\t4" (writer/to-string w))))))
-
 
 ;; ============================================================================
 ;; Main encode-array Dispatch Tests
@@ -213,30 +187,25 @@
     (let [w (arr/encode [] "," 0 (writer/create))]
       (is (= "[0]" (writer/to-string w))))))
 
-
 (deftest encode-array-primitives-test
   (testing "Encode array of primitives at root includes header"
     (let [w (arr/encode [1 2 3] "," 0 (writer/create))]
       (is (= "[3]: 1,2,3" (writer/to-string w))))))
-
 
 (deftest encode-array-objects-test
   (testing "Encode array of objects dispatches to tabular"
     (let [w (arr/encode [{"a" 1} {"a" 2}] "," 0 (writer/create))]
       (is (= "[2]{a}:\n  1\n  2" (writer/to-string w))))))
 
-
 (deftest encode-array-arrays-test
   (testing "Encode array of arrays dispatches to list format"
     (let [w (arr/encode [[1 2] [3 4]] "," 0 (writer/create))]
       (is (= "[2]:\n  - [2]: 1,2\n  - [2]: 3,4" (writer/to-string w))))))
 
-
 (deftest encode-array-with-indentation-test
   (testing "Encode array respects depth parameter"
     (let [w (arr/encode [1 2 3] "," 2 (writer/create))]
       (is (= "    1,2,3" (writer/to-string w))))))
-
 
 ;; ============================================================================
 ;; Mixed Array Encoding Tests (with list markers)
@@ -248,13 +217,11 @@
           w (arr/mixed test-arr "," 0 (writer/create))]
       (is (= "[4]:\n  - 1\n  - text\n  - true\n  - null" (writer/to-string w))))))
 
-
 (deftest encode-mixed-array-with-nested-arrays-test
   (testing "Encode mixed array containing primitive arrays"
     (let [test-arr [[1 2] [3 4 5]]
           w (arr/mixed test-arr "," 0 (writer/create))]
       (is (= "[2]:\n  - [2]: 1,2\n  - [3]: 3,4,5" (writer/to-string w))))))
-
 
 (deftest encode-mixed-array-primitives-and-arrays-test
   (testing "Encode mixed array with primitives and arrays"
@@ -262,22 +229,17 @@
           w (arr/mixed test-arr "," 0 (writer/create))]
       (is (= "[3]:\n  - 1\n  - [2]: 2,3\n  - text" (writer/to-string w))))))
 
-
-
-
 (deftest encode-mixed-array-with-tab-delimiter-test
   (testing "Encode mixed array with tab delimiter"
     (let [test-arr [1 [2 3]]
           w (arr/mixed test-arr "\t" 0 (writer/create))]
       (is (= "[2\t]:\n  - 1\n  - [2\t]: 2\t3" (writer/to-string w))))))
 
-
 (deftest encode-mixed-array-dispatch-test
   (testing "encode-array dispatches to mixed encoding for mixed arrays"
     (let [test-arr [1 "text" [2 3]]
           w (arr/encode test-arr "," 0 (writer/create))]
       (is (= "[3]:\n  - 1\n  - text\n  - [2]: 2,3" (writer/to-string w))))))
-
 
 ;; ============================================================================
 ;; Object as List Item Tests
@@ -289,7 +251,6 @@
           w (arr/object-as-list-item obj "," 1 (writer/create))]
       (is (= "  - a: 1" (writer/to-string w))))))
 
-
 (deftest encode-object-as-list-item-multiple-keys-test
   (testing "Encode object with multiple keys as list item"
     (let [obj {"id" 1 "name" "Alice"}
@@ -299,13 +260,11 @@
       (is (or (= "  - id: 1\n    name: Alice" result)
               (= "  - name: Alice\n    id: 1" result))))))
 
-
 (deftest encode-object-as-list-item-empty-object-test
   (testing "Encode empty object as list item"
     (let [obj {}
           w (arr/object-as-list-item obj "," 1 (writer/create))]
       (is (= "  -" (writer/to-string w))))))
-
 
 (deftest encode-mixed-array-with-objects-test
   (testing "Encode mixed array with primitives and objects"
@@ -313,7 +272,6 @@
           w (arr/encode test-arr "," 0 (writer/create))
           result (writer/to-string w)]
       (is (= "[3]:\n  - 1\n  - a: 1\n  - text" result)))))
-
 
 (deftest encode-mixed-array-with-multi-key-objects-test
   (testing "Encode mixed array with objects having NO common keys"
@@ -326,7 +284,6 @@
               (= "[2]:\n  - age: 30\n    name: Alice\n  - zip: \"10001\"\n    city: NYC" result)
               (= "[2]:\n  - name: Alice\n    age: 30\n  - zip: \"10001\"\n    city: NYC" result)
               (= "[2]:\n  - age: 30\n    name: Alice\n  - city: NYC\n    zip: \"10001\"" result))))))
-
 
 ;; ============================================================================
 ;; V3.0 Spec: List Item with Tabular Array First Field Tests
@@ -342,7 +299,6 @@
       (is (or (= "- orders[2]{id,qty}:\n    1,10\n    2,5\n  total: 350" result)
               (= "- orders[2]{qty,id}:\n    10,1\n    5,2\n  total: 350" result))))))
 
-
 (deftest encode-object-as-list-item-tabular-only-field-test
   (testing "Encode list item when only field is tabular array"
     (let [obj {"items" [{"a" 1 "b" 2} {"a" 3 "b" 4}]}
@@ -351,7 +307,6 @@
       (is (or (= "- items[2]{a,b}:\n    1,2\n    3,4" result)
               (= "- items[2]{b,a}:\n    2,1\n    4,3" result))))))
 
-
 (deftest encode-object-as-list-item-tabular-with-multiple-rest-fields-test
   (testing "Encode list item with tabular first field and multiple rest fields"
     (let [obj {"data" [{"x" 1} {"x" 2}]
@@ -359,16 +314,15 @@
                "count" 2}
           w (arr/object-as-list-item obj "," 0 (writer/create))
           result (writer/to-string w)
-          lines (clojure.string/split-lines result)]
+          lines (str/split-lines result)]
       ;; First line should be tabular header
-      (is (clojure.string/starts-with? (first lines) "- data[2]{x}:"))
+      (is (str/starts-with? (first lines) "- data[2]{x}:"))
       ;; Rows at depth+2 (4 spaces)
       (is (= "    1" (second lines)))
       (is (= "    2" (nth lines 2)))
       ;; Rest fields at depth+1 (2 spaces)
-      (is (some #(clojure.string/starts-with? % "  name:") (drop 3 lines)))
-      (is (some #(clojure.string/starts-with? % "  count:") (drop 3 lines))))))
-
+      (is (some #(str/starts-with? % "  name:") (drop 3 lines)))
+      (is (some #(str/starts-with? % "  count:") (drop 3 lines))))))
 
 (deftest encode-object-as-list-item-non-tabular-array-test
   (testing "Encode list item when first field is non-tabular (mixed) array"
@@ -380,7 +334,6 @@
       (is (or (= "- items[3]: 1,two,3\n  label: mixed" result)
               (= "- label: mixed\n  items[3]: 1,two,3" result))))))
 
-
 (deftest encode-object-as-list-item-empty-array-first-field-test
   (testing "Encode list item when first field is empty array"
     (let [obj {"items" []
@@ -389,7 +342,6 @@
           result (writer/to-string w)]
       (is (or (= "- items[0]\n  name: empty" result)
               (= "- name: empty\n  items[0]" result))))))
-
 
 (deftest encode-object-as-list-item-inline-array-first-field-test
   (testing "Encode list item when first field is primitive array"

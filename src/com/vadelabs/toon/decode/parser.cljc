@@ -4,7 +4,8 @@
   Parses array headers, delimited values, primitive tokens, and keys."
   (:require
    [clojure.string :as str]
-   [com.vadelabs.toon.utils :as str-utils]))
+   [com.vadelabs.toon.utils :as str-utils]
+   #?(:cljs [goog.string :as gstring])))
 
 ;; ============================================================================
 ;; Constants
@@ -154,7 +155,7 @@
   [pos current in-quotes values]
   {:pos (inc pos)
    :current #?(:clj (StringBuilder.)
-               :cljs (goog.string/StringBuffer.))
+               :cljs (gstring/StringBuffer.))
    :in-quotes in-quotes
    :values (conj values (str/trim (.toString current)))})
 
@@ -196,7 +197,7 @@
   ([input delimiter]
    (loop [pos 0
           current #?(:clj (StringBuilder.)
-                     :cljs (goog.string/StringBuffer.))
+                     :cljs (gstring/StringBuffer.))
           in-quotes false
           values []]
      (if (>= pos (count input))

@@ -1,17 +1,15 @@
 (ns com.vadelabs.toon.decode.objects
   "Object (map) decoding for TOON format."
   (:require
-    [clojure.string :as str]
-    [com.vadelabs.toon.constants :as const]
-    [com.vadelabs.toon.decode.arrays :as arrays]
-    [com.vadelabs.toon.decode.parser :as parser]
-    [com.vadelabs.toon.decode.scanner :as scanner]
-    [com.vadelabs.toon.utils :as str-utils]))
-
+   [clojure.string :as str]
+   [com.vadelabs.toon.constants :as const]
+   [com.vadelabs.toon.decode.arrays :as arrays]
+   [com.vadelabs.toon.decode.parser :as parser]
+   [com.vadelabs.toon.decode.scanner :as scanner]
+   [com.vadelabs.toon.utils :as str-utils]))
 
 ;; Forward declaration for mutual recursion with items namespace
 (declare object)
-
 
 ;; ============================================================================
 ;; Helper Functions for Object Decoding
@@ -48,7 +46,6 @@
                                        (arrays/list-array header-info cursor-after-header nested-depth strict list-item-fn))]
     [key was-quoted decoded-array final-cursor]))
 
-
 (defn- decode-nested-object-or-nil
   "Decodes a nested object or returns nil if no nested content.
 
@@ -73,7 +70,6 @@
       ;; No nested content: empty value
       [k nil cursor-after-key])))
 
-
 (defn- decode-inline-array
   "Decodes an inline primitive array.
 
@@ -95,7 +91,6 @@
         new-cursor (scanner/advance-cursor cursor)]
     [key was-quoted decoded-array new-cursor]))
 
-
 (defn- decode-inline-primitive
   "Decodes an inline primitive value.
 
@@ -111,7 +106,6 @@
   (let [value (parser/primitive-token value-part strict)
         new-cursor (scanner/advance-cursor cursor)]
     [k value new-cursor]))
-
 
 ;; ============================================================================
 ;; Object Decoding
@@ -156,7 +150,7 @@
                    value-part (str/trim (subs content (inc colon-pos)))
                    {:keys [key was-quoted]} (parser/key-token key-part)
                    has-array-header? (str/includes? key-part "[")
-                   has-inline-value? (not (empty? value-part))
+                   has-inline-value? (seq value-part)
                    ;; Track quoted keys for path expansion
                    quoted-keys' (if was-quoted (conj quoted-keys key) quoted-keys)]
                (cond
@@ -195,7 +189,6 @@
                    (recur new-cursor
                           (assoc obj key value)
                           quoted-keys')))))))))))
-
 
 ;; ============================================================================
 ;; Object as List Item Decoding

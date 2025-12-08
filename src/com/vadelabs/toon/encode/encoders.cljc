@@ -7,19 +7,17 @@
   - Arrays as values
   - Key collapsing for nested single-key objects"
   (:require
-    [clojure.string :as str]
-    [com.vadelabs.toon.constants :as const]
-    [com.vadelabs.toon.encode.arrays :as array]
-    [com.vadelabs.toon.encode.keys :as keys]
-    [com.vadelabs.toon.encode.normalize :as norm]
-    [com.vadelabs.toon.encode.primitives :as prim]
-    [com.vadelabs.toon.encode.writer :as writer]
-    [com.vadelabs.toon.utils :as quote]))
-
+   [clojure.string :as str]
+   [com.vadelabs.toon.constants :as const]
+   [com.vadelabs.toon.encode.arrays :as array]
+   [com.vadelabs.toon.encode.keys :as keys]
+   [com.vadelabs.toon.encode.normalize :as norm]
+   [com.vadelabs.toon.encode.primitives :as prim]
+   [com.vadelabs.toon.encode.writer :as writer]
+   [com.vadelabs.toon.utils :as quote]))
 
 ;; Forward declarations for mutual recursion
 (declare value object)
-
 
 ;; ============================================================================
 ;; Key-Value Pair Encoding (Helper Functions)
@@ -45,7 +43,6 @@
         line (str quoted-key const/colon const/space encoded-value)]
     (writer/push writer depth line)))
 
-
 (defn- empty-array-pair
   "Encodes a key-value pair where value is an empty array.
 
@@ -61,7 +58,6 @@
   [k depth writer]
   (let [quoted-key (quote/maybe-quote-key k)]
     (writer/push writer depth (str quoted-key const/empty-array-with-length))))
-
 
 (defn- primitive-array-pair
   "Encodes a key-value pair where value is array of primitives.
@@ -85,7 +81,6 @@
         line (str header values-str)]
     (writer/push writer depth line)))
 
-
 (defn- complex-array-pair
   "Encodes a key-value pair where value is array of objects/arrays.
 
@@ -102,7 +97,7 @@
 
   Returns:
     Updated LineWriter"
-  [k v {:keys [delimiter] :as options} depth writer]
+  [k v {:keys [delimiter]} depth writer]
   (let [quoted-key (quote/maybe-quote-key k)]
     (cond
       ;; Uniform array of objects with common keys: tabular format
@@ -124,7 +119,6 @@
             w (writer/push writer depth header)]
         (array/mixed-items v delimiter (inc depth) w)))))
 
-
 (defn- object-pair
   "Encodes a key-value pair where value is a nested object.
 
@@ -144,7 +138,6 @@
         w (writer/push writer depth (str quoted-key const/colon))]
     (object v options (inc depth) w)))
 
-
 ;; ============================================================================
 ;; Object Encoding
 ;; ============================================================================
@@ -157,7 +150,6 @@
   (let [encoded-value (prim/encode leaf-value delimiter)
         line (str quoted-key const/colon const/space encoded-value)]
     (writer/push writer depth line)))
-
 
 (defn- collapsed-leaf-array
   "Encodes a collapsed key with array leaf value.
@@ -179,7 +171,6 @@
     (let [header (str quoted-key (array/array-header (count leaf-value) delimiter) const/colon)
           w (writer/push writer depth header)]
       (array/encode leaf-value delimiter (inc depth) w))))
-
 
 (defn- fully-collapsed-pair
   "Encodes a key-value pair that has been fully collapsed to a leaf.
@@ -204,7 +195,6 @@
     :else
     writer))
 
-
 (defn- partially-collapsed-pair
   "Encodes a key-value pair that has been partially collapsed.
 
@@ -214,7 +204,6 @@
   [quoted-key remainder options depth writer]
   (let [w (writer/push writer depth (str quoted-key const/colon))]
     (object remainder options (inc depth) w)))
-
 
 (defn- collapsed-pair
   "Encodes a key-value pair using the collapsed result.
@@ -230,7 +219,6 @@
       (fully-collapsed-pair quoted-key leaf-value options depth writer)
       ;; Partially collapsed - has remainder
       (partially-collapsed-pair quoted-key remainder options depth writer))))
-
 
 (defn key-value-pair
   "Encodes a single key-value pair by dispatching to appropriate encoder.
@@ -283,7 +271,6 @@
        :else
        writer))))
 
-
 (defn object
   "Encodes a map to TOON format.
 
@@ -303,7 +290,6 @@
                  (key-value-pair k v options depth w all-keys))
                writer
                obj)))
-
 
 (defn value
   "Encodes any value to TOON format.

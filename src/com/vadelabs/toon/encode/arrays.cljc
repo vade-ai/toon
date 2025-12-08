@@ -6,17 +6,15 @@
   - Tabular arrays of objects (key[N]{col1,col2}: ...)
   - Nested arrays of arrays"
   (:require
-    [clojure.string :as str]
-    [com.vadelabs.toon.constants :as const]
-    [com.vadelabs.toon.encode.normalize :as norm]
-    [com.vadelabs.toon.encode.primitives :as prim]
-    [com.vadelabs.toon.encode.writer :as writer]
-    [com.vadelabs.toon.utils :as quote]))
-
+   [clojure.string :as str]
+   [com.vadelabs.toon.constants :as const]
+   [com.vadelabs.toon.encode.normalize :as norm]
+   [com.vadelabs.toon.encode.primitives :as prim]
+   [com.vadelabs.toon.encode.writer :as writer]
+   [com.vadelabs.toon.utils :as quote]))
 
 ;; Forward declarations for mutual references
 (declare mixed-items)
-
 
 ;; ============================================================================
 ;; Array Header Utilities
@@ -42,7 +40,6 @@
   (let [delimiter-part (if (not= delimiter ",") delimiter "")]
     (str const/open-bracket length delimiter-part const/close-bracket)))
 
-
 (defn extract-common-keys
   "Extracts common keys from an array of objects.
 
@@ -66,7 +63,6 @@
                  (every? #(contains? % k) all-key-sets))
                first-keys))))
 
-
 (defn- encode-delimited-values
   "Encodes a collection of values as a delimited string.
 
@@ -86,7 +82,6 @@
   [values delimiter]
   (str/join delimiter
             (into [] (map #(prim/encode % delimiter)) values)))
-
 
 ;; ============================================================================
 ;; Inline Array Encoding
@@ -119,7 +114,6 @@
                values-str)]
     (writer/push writer depth line)))
 
-
 ;; ============================================================================
 ;; Tabular Array Encoding (Arrays of Objects)
 ;; ============================================================================
@@ -148,7 +142,6 @@
                        const/colon)]
     (writer/push writer depth (str header-suffix keys-part))))
 
-
 (defn tabular-row
   "Encodes a single row in a tabular array.
 
@@ -167,7 +160,6 @@
   (let [values (into [] (map #(get obj %)) ks)
         line (encode-delimited-values values delimiter)]
     (writer/push writer depth line)))
-
 
 (defn tabular
   "Encodes an array of objects in tabular format.
@@ -196,7 +188,6 @@
                 w
                 objects)))))
 
-
 ;; ============================================================================
 ;; Object as List Item Encoding
 ;; ============================================================================
@@ -222,7 +213,6 @@
                                    common-keys))
                          arr))
         common-keys))))
-
 
 (defn- encode-first-field-tabular
   "Encodes list-item object when first field is a tabular array (v3.0 spec).
@@ -255,20 +245,19 @@
                          const/close-brace
                          const/colon)
         header-line (str const/list-item-prefix quoted-key header-suffix fields-part)
-        w (writer/push writer depth header-line)]
-    ;; Write tabular rows at depth+2
-    (let [w (reduce (fn [w row]
-                      (tabular-row row common-keys delimiter (+ depth 2) w))
-                    w
-                    first-value)]
-      ;; Write remaining fields at depth+1
-      (reduce (fn [w k]
-                (let [v (get obj k)
-                      line (str (quote/maybe-quote-key k) const/colon const/space (prim/encode v delimiter))]
-                  (writer/push w (inc depth) line)))
-              w
-              rest-keys))))
-
+        w (writer/push writer depth header-line)
+        ;; Write tabular rows at depth+2
+        w (reduce (fn [w row]
+                    (tabular-row row common-keys delimiter (+ depth 2) w))
+                  w
+                  first-value)]
+    ;; Write remaining fields at depth+1
+    (reduce (fn [w k]
+              (let [v (get obj k)
+                    line (str (quote/maybe-quote-key k) const/colon const/space (prim/encode v delimiter))]
+                (writer/push w (inc depth) line)))
+            w
+            rest-keys)))
 
 (defn- encode-first-field-primitive
   "Encodes list-item object when first field is a primitive.
@@ -300,7 +289,6 @@
             w
             rest-keys)))
 
-
 (defn- encode-first-field-empty-array
   "Encodes list-item object when first field is an empty array.
 
@@ -329,7 +317,6 @@
                 (writer/push w (inc depth) line)))
             w
             rest-keys)))
-
 
 (defn- encode-first-field-inline-array
   "Encodes list-item object when first field is an inline primitive array.
@@ -362,7 +349,6 @@
                 (writer/push w (inc depth) line)))
             w
             rest-keys)))
-
 
 (defn- encode-first-field-complex-array
   "Encodes list-item object when first field is a non-inline array.
@@ -397,7 +383,6 @@
                 (writer/push w (inc depth) line)))
             w
             rest-keys)))
-
 
 (defn- encode-first-field-object
   "Encodes list-item object when first field is a nested object.
@@ -434,7 +419,6 @@
                 (writer/push w (inc depth) line)))
             w
             rest-keys)))
-
 
 (defn object-as-list-item
   "Encodes an object as a list item (v3.0 spec compliant).
@@ -513,7 +497,6 @@
            :else
            (writer/push writer depth const/list-item-marker)))))))
 
-
 ;; ============================================================================
 ;; Mixed Array Encoding (with list markers)
 ;; ============================================================================
@@ -558,7 +541,6 @@
           writer
           arr))
 
-
 (defn mixed
   "Encodes a mixed array with header using list item markers.
 
@@ -579,7 +561,6 @@
   (let [header (str (array-header (count arr) delimiter) const/colon)
         w (writer/push writer depth header)]
     (mixed-items arr delimiter (inc depth) w)))
-
 
 ;; ============================================================================
 ;; Array of Arrays Encoding
@@ -609,7 +590,6 @@
           writer
           arrays))
 
-
 (defn of-arrays
   "Encodes a nested array (array of arrays) with header using list format.
 
@@ -630,7 +610,6 @@
   (let [header (str (array-header (count arrays) delimiter) const/colon)
         w (writer/push writer depth header)]
     (of-arrays-items arrays delimiter (inc depth) w)))
-
 
 ;; ============================================================================
 ;; Main Array Encoding Dispatch
